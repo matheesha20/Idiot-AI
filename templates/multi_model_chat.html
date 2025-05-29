@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Multi-Model AI Assistant</title>
+    <title>🤖 Multi-Model AI Assistant with Auto-Research</title>
     <style>
         * {
             margin: 0;
@@ -80,6 +80,23 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
+        .auto-research-notice {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 500;
+            border: 1px solid #10b981;
+        }
+
+        .auto-research-notice.disabled {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border-color: #ef4444;
+        }
+
         .model-info {
             background: #0f0f0f;
             padding: 0.75rem;
@@ -115,6 +132,11 @@
             border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 500;
+        }
+
+        .feature-tag.auto-research {
+            background: #059669;
+            color: white;
         }
 
         .performance-badge {
@@ -156,7 +178,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            min-height: 44px; /* Better touch target */
+            min-height: 44px;
         }
 
         .new-chat-btn:hover {
@@ -187,7 +209,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 60px; /* Better touch target */
+            min-height: 60px;
         }
 
         .chat-item:hover {
@@ -402,6 +424,16 @@
             text-overflow: ellipsis;
         }
 
+        .status-highlight {
+            color: #10b981;
+            font-weight: 500;
+        }
+
+        .status-disabled {
+            color: #ef4444;
+            font-weight: 500;
+        }
+
         .chat-container {
             flex: 1;
             display: flex;
@@ -488,6 +520,25 @@
         .message-model-badge.amu_ultra {
             background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
             color: white;
+        }
+
+        .research-indicator {
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: #10b981;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .message-time {
@@ -584,6 +635,18 @@
             font-style: italic;
             text-align: center;
             padding: 2rem;
+        }
+
+        .researching {
+            display: none;
+            color: #10b981;
+            font-style: italic;
+            text-align: center;
+            padding: 1rem;
+            background: #059669;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
         }
 
         .error {
@@ -788,6 +851,16 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <div class="auto-research-notice {% if not crawl4ai_enabled %}disabled{% endif %}">
+                {% if crawl4ai_enabled %}
+                    🌐 Auto-Research Enabled
+                    <br>AI will automatically research topics online
+                {% else %}
+                    ⚠️ Auto-Research Disabled
+                    <br>Install crawl4ai for web research
+                {% endif %}
+            </div>
+
             <div class="model-selector">
                 <label for="modelSelect">Choose AI Model:</label>
                 <select class="model-select" id="modelSelect">
@@ -862,11 +935,20 @@
 
         <div class="status-bar">
             Knowledge Base: {{ doc_count }} documents | 
-            Web Scraping: {{ 'Enabled' if crawl4ai_enabled else 'Disabled' }} | 
-            Current Chat: <span id="currentChatTitle">Loading...</span>
+            Auto-Research: 
+            {% if crawl4ai_enabled %}
+                <span class="status-highlight">Online & Active</span>
+            {% else %}
+                <span class="status-disabled">Offline</span>
+            {% endif %}
+            | Current Chat: <span id="currentChatTitle">Loading...</span>
         </div>
 
         <div class="chat-container">
+            <div class="researching" id="researchingIndicator">
+                🌐 Researching your question online...
+            </div>
+
             <div class="chat-messages" id="chatMessages">
                 <div class="loading" id="loadingIndicator">🤖 Loading conversation...</div>
             </div>
@@ -875,7 +957,7 @@
                 <input type="text" 
                        class="message-input" 
                        id="messageInput" 
-                       placeholder="Type your message... (prepare for attitude)" 
+                       placeholder="Ask anything - I'll research it automatically if needed!" 
                        maxlength="500"
                        autocomplete="off">
                 <button class="send-button" id="sendButton">Send 🚀</button>
@@ -892,6 +974,7 @@
 
         // Models data
         const modelsData = {{ models | tojson }};
+        const autoResearchEnabled = {{ crawl4ai_enabled | tojson }};
         
         // DOM elements
         const sidebar = document.getElementById('sidebar');
@@ -901,6 +984,7 @@
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const researchingIndicator = document.getElementById('researchingIndicator');
         const newChatBtn = document.getElementById('newChatBtn');
         const deleteAccountBtn = document.getElementById('deleteAccountBtn');
         const chatsList = document.getElementById('chatsList');
@@ -969,7 +1053,7 @@
             featuresContainer.innerHTML = '';
             model.special_features.forEach(feature => {
                 const tag = document.createElement('span');
-                tag.className = 'feature-tag';
+                tag.className = feature === 'Auto web research' || feature.includes('research') ? 'feature-tag auto-research' : 'feature-tag';
                 tag.textContent = feature;
                 featuresContainer.appendChild(tag);
             });
@@ -1194,6 +1278,17 @@
             }
         }
 
+        function shouldShowResearchIndicator(message) {
+            const researchKeywords = [
+                'apple', 'google', 'microsoft', 'tesla', 'latest', 'current',
+                'news', 'price', 'stock', 'company', 'what is', 'who is',
+                'information about', 'tell me about'
+            ];
+            
+            const lowerMessage = message.toLowerCase();
+            return researchKeywords.some(keyword => lowerMessage.includes(keyword));
+        }
+
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message || isLoading || !currentChatId) return;
@@ -1203,10 +1298,18 @@
             messageInput.value = '';
             scrollToBottom();
 
+            // Show research indicator if likely to trigger research
+            if (autoResearchEnabled && shouldShowResearchIndicator(message)) {
+                researchingIndicator.style.display = 'block';
+                setTimeout(() => {
+                    researchingIndicator.style.display = 'none';
+                }, 3000);
+            }
+
             // Show loading state
             isLoading = true;
             sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
+            sendButton.textContent = 'Researching...';
 
             try {
                 const response = await fetch('/chat', {
@@ -1238,6 +1341,7 @@
                 isLoading = false;
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send 🚀';
+                researchingIndicator.style.display = 'none';
                 scrollToBottom();
             }
         }
@@ -1249,6 +1353,8 @@
             const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
             
             let modelBadge = '';
+            let researchBadge = '';
+            
             if (role === 'bot' && modelId) {
                 const modelNames = {
                     'chanuth': 'Chanuth',
@@ -1256,10 +1362,16 @@
                     'amu_ultra': 'Amu Ultra'
                 };
                 modelBadge = `<div class="message-model-badge ${modelId}">${modelNames[modelId] || 'AI'}</div>`;
+                
+                // Show research indicator if content seems to contain fresh information
+                if (autoResearchEnabled && (content.includes('recently') || content.includes('currently') || content.includes('latest'))) {
+                    researchBadge = `<div class="research-indicator">🌐 Researched</div>`;
+                }
             }
             
             messageDiv.innerHTML = `
                 ${modelBadge}
+                ${researchBadge}
                 <div>${content}</div>
                 <div class="message-time">${timeStr}</div>
             `;
