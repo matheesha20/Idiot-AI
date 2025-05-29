@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 Multi-Model AI Assistant with Auto-Research</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Multi-Model AI Assistant with Auto-Research</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/logo.png">
+    <link rel="apple-touch-icon" href="/static/logo.png">
+    <link rel="manifest" href="/static/manifest.json">
     <style>
         * {
             margin: 0;
@@ -22,6 +28,7 @@
             padding: 0;
             -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .sidebar {
@@ -32,6 +39,7 @@
             flex-direction: column;
             transition: transform 0.3s ease;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .sidebar-header {
@@ -193,8 +201,10 @@
         .chats-list {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 0.5rem;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
         }
 
         .chat-item {
@@ -374,6 +384,20 @@
             gap: 1rem;
         }
 
+        .app-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .app-logo:hover {
+            transform: scale(1.05);
+        }
+
         .header-title {
             color: #ffffff;
             font-size: 1.3rem;
@@ -445,6 +469,7 @@
         .chat-messages {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 1rem;
             background: #0f0f0f;
             border-radius: 12px;
@@ -453,6 +478,9 @@
             scrollbar-width: thin;
             scrollbar-color: #333 #111;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            /* Ensure proper height calculation on mobile */
+            min-height: 0;
         }
 
         .chat-messages::-webkit-scrollbar {
@@ -639,14 +667,158 @@
 
         .researching {
             display: none;
-            color: #10b981;
-            font-style: italic;
-            text-align: center;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
             padding: 1rem;
-            background: #059669;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 1rem;
-            animation: pulse 2s infinite;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+        }
+
+        .research-progress {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .research-title {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .research-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .research-steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .research-step {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .research-step.active {
+            opacity: 1;
+            font-weight: 500;
+        }
+
+        .research-step.completed {
+            opacity: 0.8;
+            color: #d1fae5;
+        }
+
+        .step-icon {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .research-step.active .step-icon {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .research-step.completed .step-icon {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .research-progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .research-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffffff 0%, #d1fae5 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        .crawl-results {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .crawl-result-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+            font-size: 0.85rem;
+        }
+
+        .crawl-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .crawl-status.success {
+            background: #10b981;
+        }
+
+        .crawl-status.error {
+            background: #ef4444;
+        }
+
+        .crawl-status.loading {
+            background: #fbbf24;
+            animation: pulse 1s infinite;
         }
 
         .error {
@@ -685,6 +857,11 @@
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
+            body {
+                touch-action: manipulation;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .sidebar {
                 position: fixed;
                 top: 0;
@@ -694,6 +871,8 @@
                 transform: translateX(-100%);
                 width: 85vw;
                 max-width: 320px;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
             }
 
             .sidebar.open {
@@ -702,18 +881,27 @@
 
             .mobile-menu-btn {
                 display: flex;
+                touch-action: manipulation;
             }
 
             .main-content {
                 width: 100%;
+                height: 100vh;
+                overflow: hidden;
             }
 
             .header {
                 padding: 0.75rem 1rem;
+                flex-shrink: 0;
+            }
+
+            .app-logo {
+                width: 32px;
+                height: 32px;
             }
 
             .header-title {
-                font-size: 1.2rem;
+                font-size: 1.1rem;
             }
 
             .current-model-display {
@@ -723,50 +911,77 @@
             .status-bar {
                 padding: 0.5rem 1rem;
                 font-size: 0.75rem;
+                flex-shrink: 0;
             }
 
             .chat-container {
                 padding: 0.75rem;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 140px); /* Adjust for header and status bar */
+                overflow: hidden;
             }
 
             .chat-messages {
                 padding: 0.75rem;
                 margin-bottom: 0.75rem;
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+                /* Fix for iOS Safari */
+                -webkit-transform: translate3d(0,0,0);
             }
 
             .message {
                 max-width: 95%;
                 padding: 0.75rem;
                 font-size: 0.9rem;
+                /* Prevent text selection interference with scrolling */
+                -webkit-user-select: text;
+                user-select: text;
+                -webkit-touch-callout: default;
             }
 
             .input-container {
                 padding: 0.75rem;
                 gap: 0.5rem;
+                flex-shrink: 0;
             }
 
             .message-input {
                 padding: 0.75rem;
                 font-size: 0.95rem;
+                touch-action: manipulation;
             }
 
             .send-button {
                 padding: 0.75rem 1rem;
                 font-size: 0.85rem;
                 min-width: 70px;
+                touch-action: manipulation;
             }
 
             .sidebar-header {
                 padding: 0.75rem;
+                flex-shrink: 0;
             }
 
             .chats-list {
                 padding: 0.5rem;
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
             }
 
             .chat-item {
                 padding: 0.75rem;
                 min-height: 56px;
+                touch-action: manipulation;
             }
 
             .chat-title {
@@ -835,6 +1050,8 @@
 
         /* Touch improvements */
         @media (hover: none) and (pointer: coarse) {
+            /* Mobile touch device specific styles */
+            
             .chat-delete {
                 opacity: 1;
             }
@@ -843,6 +1060,41 @@
             .send-button:hover,
             .chat-item:hover {
                 transform: none;
+            }
+
+            /* Ensure scrollable areas work properly on touch devices */
+            .chat-messages,
+            .chats-list,
+            .sidebar {
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+            }
+
+            /* Fix for iOS Safari address bar hide/show */
+            .main-content {
+                height: 100vh;
+                height: -webkit-fill-available;
+            }
+
+            .chat-container {
+                height: calc(100vh - 140px);
+                height: calc(-webkit-fill-available - 140px);
+            }
+
+            /* Prevent zoom on input focus */
+            .message-input,
+            .model-select {
+                font-size: 16px;
+            }
+
+            /* Improve touch targets */
+            .chat-item,
+            .new-chat-btn,
+            .send-button,
+            .mobile-menu-btn,
+            .chat-delete {
+                min-height: 44px;
+                min-width: 44px;
             }
         }
     </style>
@@ -925,7 +1177,8 @@
         <div class="header">
             <div class="header-left">
                 <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
-                <h1 class="header-title">🤖 AI Assistant</h1>
+                <img src="/static/logo.png" alt="Logo" class="app-logo" onerror="this.style.display='none'">
+                <h1 class="header-title">AI Assistant</h1>
             </div>
             <div class="current-model-display" id="currentModelDisplay">
                 <div class="model-indicator" id="modelIndicator"></div>
@@ -946,7 +1199,44 @@
 
         <div class="chat-container">
             <div class="researching" id="researchingIndicator">
-                🌐 Researching your question online...
+                <div class="research-progress">
+                    <div class="research-title">
+                        <div class="research-spinner"></div>
+                        <span id="researchTitle">Researching your question...</span>
+                    </div>
+                    
+                    <ul class="research-steps" id="researchSteps">
+                        <li class="research-step" id="step-analyze">
+                            <div class="step-icon">1</div>
+                            <span>Analyzing your question</span>
+                        </li>
+                        <li class="research-step" id="step-urls">
+                            <div class="step-icon">2</div>
+                            <span>Finding relevant websites</span>
+                        </li>
+                        <li class="research-step" id="step-crawl">
+                            <div class="step-icon">3</div>
+                            <span>Crawling web content</span>
+                        </li>
+                        <li class="research-step" id="step-process">
+                            <div class="step-icon">4</div>
+                            <span>Processing information</span>
+                        </li>
+                        <li class="research-step" id="step-respond">
+                            <div class="step-icon">5</div>
+                            <span>Generating response</span>
+                        </li>
+                    </ul>
+                    
+                    <div class="research-progress-bar">
+                        <div class="research-progress-fill" id="researchProgressFill"></div>
+                    </div>
+                    
+                    <div class="crawl-results" id="crawlResults" style="display: none;">
+                        <div style="font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 500;">Sources found:</div>
+                        <div id="crawlResultsList"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="chat-messages" id="chatMessages">
@@ -985,6 +1275,11 @@
         const sendButton = document.getElementById('sendButton');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const researchingIndicator = document.getElementById('researchingIndicator');
+        const researchTitle = document.getElementById('researchTitle');
+        const researchSteps = document.getElementById('researchSteps');
+        const researchProgressFill = document.getElementById('researchProgressFill');
+        const crawlResults = document.getElementById('crawlResults');
+        const crawlResultsList = document.getElementById('crawlResultsList');
         const newChatBtn = document.getElementById('newChatBtn');
         const deleteAccountBtn = document.getElementById('deleteAccountBtn');
         const chatsList = document.getElementById('chatsList');
@@ -997,6 +1292,66 @@
         loadCurrentChat();
         setupEventListeners();
         updateModelInfo();
+        setupMobileScrollFixes();
+
+        function setupMobileScrollFixes() {
+            // Fix mobile scrolling issues
+            if (isMobile) {
+                // Prevent body scroll when sidebar is open
+                function preventBodyScroll(e) {
+                    if (sidebar.classList.contains('open')) {
+                        e.preventDefault();
+                    }
+                }
+                
+                // Add touch event listeners for mobile
+                document.addEventListener('touchmove', function(e) {
+                    // Allow scrolling in scrollable containers
+                    const scrollableElements = [chatMessages, chatsList];
+                    let allowScroll = false;
+                    
+                    for (let element of scrollableElements) {
+                        if (element && element.contains(e.target)) {
+                            allowScroll = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!allowScroll && sidebar.classList.contains('open')) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                // Improve iOS Safari scrolling
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    // Fix iOS Safari scroll bounce
+                    document.addEventListener('touchstart', function(e) {
+                        if (e.touches.length === 1) {
+                            const scrollableParent = findScrollableParent(e.target);
+                            if (scrollableParent) {
+                                const isAtTop = scrollableParent.scrollTop === 0;
+                                const isAtBottom = scrollableParent.scrollTop + scrollableParent.clientHeight >= scrollableParent.scrollHeight;
+                                
+                                if (isAtTop) scrollableParent.scrollTop = 1;
+                                if (isAtBottom) scrollableParent.scrollTop = scrollableParent.scrollHeight - scrollableParent.clientHeight - 1;
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function findScrollableParent(element) {
+            // Find the nearest scrollable parent
+            while (element && element !== document.body) {
+                const style = window.getComputedStyle(element);
+                if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                    return element;
+                }
+                element = element.parentElement;
+            }
+            return null;
+        }
 
         function setupEventListeners() {
             // Mobile menu
@@ -1278,6 +1633,139 @@
             }
         }
 
+        function showResearchProgress(message) {
+            if (!autoResearchEnabled || !shouldShowResearchIndicator(message)) {
+                return;
+            }
+
+            // Show research indicator
+            researchingIndicator.style.display = 'block';
+            
+            // Reset all steps
+            const steps = ['step-analyze', 'step-urls', 'step-crawl', 'step-process', 'step-respond'];
+            steps.forEach(stepId => {
+                const step = document.getElementById(stepId);
+                if (step) {
+                    step.classList.remove('active', 'completed');
+                }
+            });
+            
+            // Reset progress bar
+            researchProgressFill.style.width = '0%';
+            
+            // Hide crawl results initially
+            crawlResults.style.display = 'none';
+            crawlResultsList.innerHTML = '';
+
+            // Start progress animation
+            simulateResearchProgress();
+        }
+
+        function simulateResearchProgress() {
+            const steps = [
+                { id: 'step-analyze', title: 'Analyzing your question', duration: 500 },
+                { id: 'step-urls', title: 'Finding relevant websites', duration: 800 },
+                { id: 'step-crawl', title: 'Crawling web content', duration: 2000 },
+                { id: 'step-process', title: 'Processing information', duration: 1000 },
+                { id: 'step-respond', title: 'Generating response', duration: 500 }
+            ];
+
+            let currentStep = 0;
+            const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
+            let elapsedTime = 0;
+
+            function updateStep() {
+                if (currentStep < steps.length) {
+                    const step = steps[currentStep];
+                    const stepElement = document.getElementById(step.id);
+                    
+                    // Mark previous steps as completed
+                    for (let i = 0; i < currentStep; i++) {
+                        const prevStep = document.getElementById(steps[i].id);
+                        if (prevStep) {
+                            prevStep.classList.remove('active');
+                            prevStep.classList.add('completed');
+                            const icon = prevStep.querySelector('.step-icon');
+                            if (icon) icon.textContent = '✓';
+                        }
+                    }
+                    
+                    // Mark current step as active
+                    if (stepElement) {
+                        stepElement.classList.add('active');
+                        researchTitle.textContent = step.title;
+                    }
+                    
+                    // Update progress bar
+                    elapsedTime += step.duration;
+                    const progress = (elapsedTime / totalDuration) * 100;
+                    researchProgressFill.style.width = `${Math.min(progress, 95)}%`;
+                    
+                    // Show crawl results during crawling step
+                    if (step.id === 'step-crawl') {
+                        setTimeout(() => {
+                            showCrawlResults();
+                        }, step.duration / 2);
+                    }
+                    
+                    currentStep++;
+                    setTimeout(updateStep, step.duration);
+                } else {
+                    // Complete all steps
+                    steps.forEach((step, index) => {
+                        const stepElement = document.getElementById(step.id);
+                        if (stepElement) {
+                            stepElement.classList.remove('active');
+                            stepElement.classList.add('completed');
+                            const icon = stepElement.querySelector('.step-icon');
+                            if (icon) icon.textContent = '✓';
+                        }
+                    });
+                    
+                    researchProgressFill.style.width = '100%';
+                    researchTitle.textContent = 'Research complete!';
+                }
+            }
+
+            updateStep();
+        }
+
+        function showCrawlResults() {
+            // Simulate crawl results with common websites
+            const simulatedResults = [
+                { url: 'apple.com', status: 'success', title: 'Apple Official Website' },
+                { url: 'investor.apple.com', status: 'success', title: 'Apple Investor Relations' },
+                { url: 'techcrunch.com', status: 'loading', title: 'TechCrunch News' }
+            ];
+
+            crawlResults.style.display = 'block';
+            crawlResultsList.innerHTML = '';
+
+            simulatedResults.forEach((result, index) => {
+                setTimeout(() => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'crawl-result-item';
+                    
+                    const status = document.createElement('div');
+                    status.className = `crawl-status ${result.status}`;
+                    
+                    const info = document.createElement('span');
+                    info.textContent = `${result.title} (${result.url})`;
+                    
+                    resultItem.appendChild(status);
+                    resultItem.appendChild(info);
+                    crawlResultsList.appendChild(resultItem);
+                    
+                    // Update loading to success after delay
+                    if (result.status === 'loading') {
+                        setTimeout(() => {
+                            status.className = 'crawl-status success';
+                        }, 1000);
+                    }
+                }, index * 300);
+            });
+        }
+
         function shouldShowResearchIndicator(message) {
             const researchKeywords = [
                 'apple', 'google', 'microsoft', 'tesla', 'latest', 'current',
@@ -1289,6 +1777,10 @@
             return researchKeywords.some(keyword => lowerMessage.includes(keyword));
         }
 
+        function hideResearchProgress() {
+            researchingIndicator.style.display = 'none';
+        }
+
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message || isLoading || !currentChatId) return;
@@ -1298,12 +1790,9 @@
             messageInput.value = '';
             scrollToBottom();
 
-            // Show research indicator if likely to trigger research
+            // Show research progress if likely to trigger research
             if (autoResearchEnabled && shouldShowResearchIndicator(message)) {
-                researchingIndicator.style.display = 'block';
-                setTimeout(() => {
-                    researchingIndicator.style.display = 'none';
-                }, 3000);
+                showResearchProgress(message);
             }
 
             // Show loading state
@@ -1341,7 +1830,7 @@
                 isLoading = false;
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send 🚀';
-                researchingIndicator.style.display = 'none';
+                hideResearchProgress();
                 scrollToBottom();
             }
         }
@@ -1380,7 +1869,20 @@
         }
 
         function scrollToBottom() {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                // Use requestAnimationFrame for smoother scrolling on mobile
+                requestAnimationFrame(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                });
+                
+                // Additional mobile Safari fix
+                if (isMobile && /iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 100);
+                }
+            }
         }
 
         function updateCurrentChatTitle() {

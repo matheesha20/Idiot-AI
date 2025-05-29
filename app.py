@@ -19,17 +19,18 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 import google.generativeai as genai
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import random
 import asyncio
 from urllib.parse import urlparse, urljoin
 import time
+import concurrent.futures
 
 # Import crawl4ai directly - Updated for v0.6+
 try:
     from crawl4ai import AsyncWebCrawler
+    from crawl4ai.models import CrawlResult
     import asyncio
-    import concurrent.futures
     CRAWL4AI_AVAILABLE = True
     print("✅ Crawl4AI imported successfully")
 except ImportError as e:
@@ -167,6 +168,7 @@ class SmartWebCrawler:
             if time.time() - last_crawl < 10:  # 10 second rate limit per domain
                 return True
         return False
+    
     def crawl_url(self, url: str) -> Dict:
         """Crawl a single URL and return structured data"""
         if not self.available:
@@ -188,9 +190,21 @@ class SmartWebCrawler:
             self.rate_limit[domain] = time.time()
             
             # Use async crawler with sync wrapper
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(self._crawl_sync_wrapper, url)
-                result = future.result(timeout=30)
+            loop = None
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            if loop.is_running():
+                # If loop is already running, create a new one
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self._crawl_sync_wrapper, url)
+                    result = future.result(timeout=30)
+            else:
+                result = loop.run_until_complete(self._crawl_async(url))
             
             if result.get('success'):
                 # Cache the result
@@ -204,38 +218,31 @@ class SmartWebCrawler:
     
     def _crawl_sync_wrapper(self, url: str) -> Dict:
         """Synchronous wrapper for async crawling"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
             return loop.run_until_complete(self._crawl_async(url))
         finally:
-            try:
-                loop.close()
-            except:
-                pass
+            loop.close()
     
     async def _crawl_async(self, url: str) -> Dict:
         """Async crawling method using AsyncWebCrawler"""
-        try:
-            async with AsyncWebCrawler(verbose=False) as crawler:
-                result = await crawler.arun(url=url)
+        async with AsyncWebCrawler(verbose=False) as crawler:
+            result = await crawler.arun(url=url)
+            
+            if result.success:
+                content = result.markdown or result.cleaned_html or ""
+                # Clean and limit content
+                content = self._clean_content(content)
                 
-                if result.success:
-                    content = result.markdown or result.cleaned_html or ""
-                    # Clean and limit content
-                    content = self._clean_content(content)
-                    
-                    return {
-                        "content": content,
-                        "url": url,
-                        "title": getattr(result, 'title', ''),
-                        "success": True
-                    }
-                else:
-                    return {"content": "", "url": url, "error": "Crawl failed", "success": False}
-        except Exception as e:
-            return {"content": "", "url": url, "error": str(e), "success": False}
-
+                return {
+                    "content": content,
+                    "url": url,
+                    "title": getattr(result, 'title', ''),
+                    "success": True
+                }
+            else:
+                return {"content": "", "url": url, "error": "Crawl failed", "success": False}
     
     def _clean_content(self, content: str, max_length: int = 2000) -> str:
         """Clean and truncate content"""
@@ -1050,6 +1057,32 @@ def get_user_info():
                                    request.remote_addr))
     user_agent = request.headers.get('User-Agent', '')
     return ip_address, user_agent
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files (logo, favicon, etc.)"""
+    return send_from_directory('static', filename)
+
+@app.route('/static/manifest.json')
+def serve_manifest():
+    """Serve PWA manifest"""
+    manifest = {
+        "name": "Multi-Model AI Assistant",
+        "short_name": "AI Assistant",
+        "description": "AI Assistant with automatic web research",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#2563eb",
+        "icons": [
+            {
+                "src": "/static/logo.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            }
+        ]
+    }
+    return jsonify(manifest)
 
 @app.route('/')
 def index():
