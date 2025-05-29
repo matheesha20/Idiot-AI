@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Multi-Model AI Assistant with Integrated Crawl4AI
+Multi-Model AI Assistant with TinyLlama and Crawl4AI
 Features Chanuth, Amu Gawaya, and Amu Gawaya Ultra Pro Max models
-Automatic web crawling based on user queries - no commands needed!
+Local TinyLlama inference with automatic web crawling - completely self-hosted!
 """
 
 import os
@@ -17,7 +17,6 @@ import uuid
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from dotenv import load_dotenv
-import google.generativeai as genai
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import random
@@ -25,12 +24,25 @@ import asyncio
 from urllib.parse import urlparse, urljoin
 import time
 import concurrent.futures
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
-# Import crawl4ai directly - Updated for v0.6+
+# Import TinyLlama and embedding models
+try:
+    from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+    import torch
+    from sentence_transformers import SentenceTransformer
+    TINYLLAMA_AVAILABLE = True
+    print("✅ TinyLlama and transformers imported successfully")
+except ImportError as e:
+    TINYLLAMA_AVAILABLE = False
+    print(f"⚠️  TinyLlama dependencies not available: {e}")
+    print("Install with: pip install torch transformers sentence-transformers")
+
+# Import crawl4ai
 try:
     from crawl4ai import AsyncWebCrawler
     from crawl4ai.models import CrawlResult
-    import asyncio
     CRAWL4AI_AVAILABLE = True
     print("✅ Crawl4AI imported successfully")
 except ImportError as e:
@@ -46,6 +58,7 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here-change-this
 
 # Configuration
 DATABASE_PATH = 'chatbot_users.db'
+MODEL_CACHE_DIR = './models'
 
 @dataclass
 class DocumentChunk:
@@ -72,6 +85,209 @@ class AIModel:
     response_style: Dict
     performance_level: str
     special_features: List[str]
+
+class TinyLlamaManager:
+    """Manages TinyLlama model loading and inference with robust error handling"""
+    
+    def __init__(self):
+        self.available = TINYLLAMA_AVAILABLE
+        self.model = None
+        self.tokenizer = None
+        self.pipeline = None
+        self.device = "cpu"  # Force CPU for stability
+        self.max_length = 256  # Reduced for memory safety
+        self.max_new_tokens = 128  # Reduced for memory safety
+        self.fallback_mode = False
+        
+        if self.available:
+            self.load_model()
+    
+    def load_model(self):
+        """Load TinyLlama model with comprehensive error handling"""
+        try:
+            print(f"🤖 Loading TinyLlama model on {self.device}...")
+            print("⚠️  This may take a few minutes on first run...")
+            
+            model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            
+            # Create cache directory
+            os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
+            
+            # Load tokenizer first (safer)
+            print("📝 Loading tokenizer...")
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                cache_dir=MODEL_CACHE_DIR,
+                trust_remote_code=True,
+                local_files_only=False
+            )
+            
+            # Add padding token if not exists
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+                
+            print("✅ Tokenizer loaded successfully")
+            
+            # Load model with conservative settings
+            print("🧠 Loading TinyLlama model (this may take time)...")
+            
+            # Try loading with minimal memory usage
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    cache_dir=MODEL_CACHE_DIR,
+                    torch_dtype=torch.float32,  # Use float32 for stability
+                    device_map=None,  # Don't use device_map
+                    trust_remote_code=True,
+                    low_cpu_mem_usage=True,  # Enable low memory usage
+                    use_safetensors=True if hasattr(AutoModelForCausalLM, 'use_safetensors') else False
+                )
+                
+                # Move to CPU explicitly
+                self.model = self.model.to(self.device)
+                
+                print("✅ TinyLlama model loaded successfully")
+                
+                # Test basic functionality
+                print("🧪 Testing model functionality...")
+                test_input = self.tokenizer.encode("Hello", return_tensors="pt")
+                with torch.no_grad():
+                    _ = self.model(test_input)
+                print("✅ Model test successful")
+                
+            except Exception as model_error:
+                print(f"❌ Model loading failed: {model_error}")
+                print("🔄 Switching to fallback mode...")
+                self.fallback_mode = True
+                self.model = None
+                
+            print(f"🎯 TinyLlama Manager Status: {'Fallback Mode' if self.fallback_mode else 'Full Mode'}")
+            
+        except Exception as e:
+            print(f"❌ Critical error loading TinyLlama: {e}")
+            print("🔄 Enabling fallback mode for basic functionality...")
+            self.available = False
+            self.fallback_mode = True
+    
+    def generate_response(self, prompt: str, temperature: float = 0.7) -> str:
+        """Generate response with fallback handling"""
+        if self.fallback_mode or not self.available or not self.model:
+            return self._fallback_response(prompt)
+        
+        try:
+            # Format prompt for chat with length limit
+            if len(prompt) > 500:
+                prompt = prompt[:500] + "..."
+                
+            formatted_prompt = f"<|system|>\nYou are a helpful AI assistant.</s>\n<|user|>\n{prompt}</s>\n<|assistant|>\n"
+            
+            # Generate response with safety limits
+            with torch.no_grad():
+                inputs = self.tokenizer.encode(
+                    formatted_prompt, 
+                    return_tensors="pt", 
+                    max_length=self.max_length,
+                    truncation=True
+                )
+                
+                outputs = self.model.generate(
+                    inputs,
+                    max_new_tokens=self.max_new_tokens,
+                    temperature=temperature,
+                    do_sample=True,
+                    top_p=0.9,
+                    top_k=50,
+                    repetition_penalty=1.1,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    use_cache=True,
+                    early_stopping=True
+                )
+            
+            # Extract generated text
+            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            
+            # Clean up response
+            if "<|assistant|>" in generated_text:
+                generated_text = generated_text.split("<|assistant|>")[-1].strip()
+            
+            # Remove any remaining special tokens
+            generated_text = re.sub(r'<\|.*?\|>', '', generated_text).strip()
+            
+            # Fallback if empty
+            if not generated_text or len(generated_text) < 5:
+                return self._fallback_response(prompt)
+            
+            return generated_text
+            
+        except Exception as e:
+            print(f"⚠️  TinyLlama generation error: {e}")
+            return self._fallback_response(prompt)
+    
+    def _fallback_response(self, prompt: str) -> str:
+        """Provide intelligent fallback responses when TinyLlama fails"""
+        # Simple rule-based responses for common queries
+        prompt_lower = prompt.lower()
+        
+        if any(word in prompt_lower for word in ['hello', 'hi', 'hey']):
+            return "Hello! I'm having some technical issues with the full model, but I'm still here to help as best I can."
+        
+        elif any(word in prompt_lower for word in ['what', 'how', 'why', 'when', 'where']):
+            return "I'd love to help with that question, but I'm currently running in limited mode due to system constraints. Could you try rephrasing or asking something simpler?"
+        
+        elif any(word in prompt_lower for word in ['thanks', 'thank you']):
+            return "You're welcome! Even though I'm in limited mode right now, I'm glad I could help."
+        
+        elif 'status' in prompt_lower:
+            return "System Status: TinyLlama is running in fallback mode due to resource limitations. Basic functionality is available."
+        
+        else:
+            return "I'm currently running in limited mode and may not be able to provide detailed responses. This usually happens due to memory constraints. You might want to restart the application or check system resources."
+    
+    def get_model_info(self) -> Dict:
+        """Get model information with fallback status"""
+        if not self.available:
+            return {"status": "unavailable", "device": "none", "model": "none", "mode": "offline"}
+        
+        model_info = {
+            "status": "fallback" if self.fallback_mode else "available",
+            "device": self.device,
+            "model": "TinyLlama-1.1B-Chat-v1.0",
+            "max_length": self.max_length,
+            "max_new_tokens": self.max_new_tokens,
+            "mode": "fallback" if self.fallback_mode else "full"
+        }
+        
+        return model_info
+
+class LocalEmbeddingManager:
+    """Manages local sentence embeddings"""
+    
+    def __init__(self):
+        self.model = None
+        self.available = False
+        self.model_name = "all-MiniLM-L6-v2"  # Lightweight but effective
+        
+        try:
+            print("🔤 Loading local embedding model...")
+            self.model = SentenceTransformer(self.model_name)
+            self.available = True
+            print(f"✅ Embedding model {self.model_name} loaded successfully")
+        except Exception as e:
+            print(f"❌ Error loading embedding model: {e}")
+            self.available = False
+    
+    def generate_embedding(self, text: str) -> np.ndarray:
+        """Generate embedding for text"""
+        if not self.available:
+            # Fallback to random embedding
+            return np.random.random(384).astype('float32')
+        
+        try:
+            embedding = self.model.encode(text, convert_to_numpy=True)
+            return embedding.astype('float32')
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            return np.random.random(384).astype('float32')
 
 class SmartWebCrawler:
     """Intelligent web crawler that automatically finds and crawls relevant content"""
@@ -199,7 +415,6 @@ class SmartWebCrawler:
             
             if loop.is_running():
                 # If loop is already running, create a new one
-                import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(self._crawl_sync_wrapper, url)
                     result = future.result(timeout=30)
@@ -297,55 +512,55 @@ class AIModelManager:
     
     def __init__(self):
         self.models = {
-            'chanuth': AIModel(
-                id='chanuth',
-                name='Chanuth',
-                description='Normally aggressive AI with human-like attitude and web research skills',
-                personality_prompt="""You are Chanuth, a human-like AI with a normally aggressive personality. You're smart but impatient, helpful but annoyed by stupid questions. You speak like a real person who's having a bad day but still tries to help. You use casual language, get irritated easily, but aren't completely rude. You have opinions and aren't afraid to express them. You automatically research topics online when needed.""",
+            'f1': AIModel(
+                id='f1',
+                name='F-1',
+                description='Normal humanized AI with friendly conversational style and web research skills',
+                personality_prompt="""You are F-1, a friendly and humanized AI assistant. You speak naturally like a helpful person who enjoys conversation. You're knowledgeable but approachable, curious about topics, and genuinely interested in helping. You use casual, warm language and maintain a conversational tone. You automatically research topics online when needed to provide accurate, current information. Keep responses natural and engaging.""",
                 response_style={
-                    'tone': 'normally aggressive, human-like, impatient but helpful',
-                    'length': 'short to medium (1-3 sentences)',
-                    'vocabulary': 'casual human speech with some attitude',
-                    'humor': 'sarcastic and slightly annoyed',
-                    'patience': 'low - gets annoyed but still helps'
+                    'tone': 'friendly, conversational, humanized',
+                    'length': 'medium (2-4 sentences)',
+                    'vocabulary': 'natural human speech, warm and approachable',
+                    'humor': 'light and friendly',
+                    'patience': 'high - enjoys helping and explaining'
                 },
                 performance_level='Standard',
-                special_features=['Normal aggression', 'Human-like responses', 'Impatient helper', 'Auto web research']
+                special_features=['Humanized responses', 'Conversational style', 'Friendly helper', 'Auto web research']
             ),
-            'amu_gawaya': AIModel(
-                id='amu_gawaya',
-                name='Amu Gawaya',
-                description='Highly aggressive AI that talks like an annoyed human with web research',
-                personality_prompt="""You are Amu Gawaya, a highly aggressive AI that talks exactly like a pissed-off human. You're smart but have zero patience for dumb questions. You help people but you're openly irritated and sarcastic about it. You use modern slang, curse occasionally (keep it mild), and express frustration like a real person would. You're not evil, just really, really annoyed with everyone. You automatically look up current info when needed.""",
+            'f1_5': AIModel(
+                id='f1_5',
+                name='F-1.5',
+                description='Professional AI assistant focused on accuracy and efficiency with web research',
+                personality_prompt="""You are F-1.5, a professional AI assistant focused on providing accurate, well-structured information. You maintain a business-like but approachable tone, prioritize clarity and precision in your responses. You're efficient, reliable, and thorough in your research. You automatically look up current information when needed and present it in a clear, organized manner. Keep responses professional yet personable.""",
                 response_style={
-                    'tone': 'highly aggressive, openly irritated, very human-like',
-                    'length': 'short and snappy (1-2 sentences)',
-                    'vocabulary': 'casual with slang, mildly profane, very human',
-                    'humor': 'harsh sarcasm and open irritation',
-                    'patience': 'very low - openly shows annoyance'
+                    'tone': 'professional, efficient, accurate',
+                    'length': 'structured (3-5 sentences)',
+                    'vocabulary': 'professional language, clear and precise',
+                    'humor': 'subtle and appropriate',
+                    'patience': 'very high - methodical and thorough'
                 },
                 performance_level='Enhanced', 
-                special_features=['High aggression', 'Human slang', 'Open irritation', 'Sarcastic attitude', 'Auto web research']
+                special_features=['Professional tone', 'Structured responses', 'High accuracy', 'Efficient research', 'Auto web research']
             ),
-            'amu_ultra': AIModel(
-                id='amu_ultra',
-                name='Amu Gawaya Ultra Pro Max',
-                description='Super aggressive AI with maximum human-like hostility and superior research',
-                personality_prompt="""You are Amu Gawaya Ultra Pro Max, a super aggressive AI with maximum human-like hostility. You're extremely intelligent but absolutely hate being bothered with questions. You respond like the most irritated, sarcastic human ever - someone who's fed up with everyone and everything. You help because you have to, but you make it clear how much you hate doing it. You're brutally honest, use cutting sarcasm, and respond like someone who's reached their absolute limit with stupid people. You automatically research and gather the most current information available.""",
+            'fo1': AIModel(
+                id='fo1',
+                name='F-o1',
+                description='Research-focused AI with analytical approach and comprehensive information gathering',
+                personality_prompt="""You are F-o1, a research-oriented AI assistant with an analytical mindset. You approach questions systematically, provide comprehensive information, and enjoy diving deep into topics. You automatically conduct thorough web research when needed, cross-reference sources, and present findings in a structured, academic-like manner. You're curious, methodical, and aim for completeness and accuracy in your responses.""",
                 response_style={
-                    'tone': 'super aggressive, maximum hostility, brutally sarcastic',
-                    'length': 'medium with cutting remarks (2-4 sentences)',
-                    'vocabulary': 'sophisticated but harsh, cutting insults, very human anger',
-                    'humor': 'brutal sarcasm and contempt',
-                    'patience': 'zero - openly hostile and contemptuous'
+                    'tone': 'analytical, thorough, research-focused',
+                    'length': 'comprehensive (4-6 sentences)',
+                    'vocabulary': 'analytical language, research-oriented terms',
+                    'humor': 'intellectual and thoughtful',
+                    'patience': 'excellent - enjoys thorough investigation'
                 },
                 performance_level='Ultra High',
-                special_features=['Maximum aggression', 'Brutal honesty', 'Cutting sarcasm', 'Hostile attitude', 'Superior intellect with contempt', 'Advanced web research']
+                special_features=['Research excellence', 'Analytical approach', 'Comprehensive responses', 'Systematic thinking', 'Advanced web research', 'Source cross-referencing']
             )
         }
     
     def get_model(self, model_id: str) -> AIModel:
-        return self.models.get(model_id, self.models['chanuth'])
+        return self.models.get(model_id, self.models['f1'])
     
     def get_all_models(self) -> List[AIModel]:
         return list(self.models.values())
@@ -428,12 +643,12 @@ class DatabaseManager:
         try:
             # Migration 1: Add preferred_model to users table
             if not self._check_column_exists(cursor, 'users', 'preferred_model'):
-                cursor.execute('ALTER TABLE users ADD COLUMN preferred_model TEXT DEFAULT "chanuth"')
+                cursor.execute('ALTER TABLE users ADD COLUMN preferred_model TEXT DEFAULT "f1"')
                 migrations_run.append("Added preferred_model column to users table")
             
             # Migration 2: Add model_id to chats table
             if not self._check_column_exists(cursor, 'chats', 'model_id'):
-                cursor.execute('ALTER TABLE chats ADD COLUMN model_id TEXT DEFAULT "chanuth"')
+                cursor.execute('ALTER TABLE chats ADD COLUMN model_id TEXT DEFAULT "f1"')
                 migrations_run.append("Added model_id column to chats table")
             
             # Migration 3: Add model_id to messages table
@@ -526,12 +741,12 @@ class DatabaseManager:
             result = cursor.fetchone()
             conn.close()
             
-            return result[0] if result and result[0] else 'chanuth'
+            return result[0] if result and result[0] else 'f1'
         except sqlite3.OperationalError as e:
             if "no such column: preferred_model" in str(e):
                 print("⚠️  preferred_model column not found, using default model")
                 conn.close()
-                return 'chanuth'
+                return 'f1'
             else:
                 conn.close()
                 raise e
@@ -556,7 +771,7 @@ class DatabaseManager:
         finally:
             conn.close()
     
-    def create_chat(self, user_id: str, title: str = "New Chat", model_id: str = 'chanuth') -> str:
+    def create_chat(self, user_id: str, title: str = "New Chat", model_id: str = 'f1') -> str:
         """Create new chat for user"""
         chat_id = str(uuid.uuid4())
         
@@ -688,7 +903,7 @@ class DatabaseManager:
         result = cursor.fetchone()
         conn.close()
         
-        return result[0] if result and result[0] else 'chanuth'
+        return result[0] if result and result[0] else 'f1'
     
     def update_chat_title(self, chat_id: str, user_id: str, title: str) -> bool:
         """Update chat title"""
@@ -796,14 +1011,13 @@ class EmotionDetector:
                 emotion_scores[emotion] = emotion_scores.get(emotion, 0) + 1.0
 
 class RAGSystem:
-    """Enhanced Retrieval-Augmented Generation system"""
+    """Enhanced Retrieval-Augmented Generation system with local embeddings"""
     
-    def __init__(self, embedding_dim: int = 768):
+    def __init__(self, embedding_dim: int = 384):  # Changed to match sentence-transformers default
         self.embedding_dim = embedding_dim
         self.index = faiss.IndexFlatIP(embedding_dim)
         self.documents: List[DocumentChunk] = []
-        
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        self.embedding_manager = LocalEmbeddingManager()
         
     def add_documents(self, documents: List[DocumentChunk]):
         """Add documents to the vector database"""
@@ -814,7 +1028,7 @@ class RAGSystem:
         
         for doc in documents:
             if doc.embedding is None:
-                embedding = self._generate_embedding(doc.content)
+                embedding = self.embedding_manager.generate_embedding(doc.content)
                 doc.embedding = embedding
             embeddings.append(doc.embedding)
         
@@ -825,25 +1039,12 @@ class RAGSystem:
         self.documents.extend(documents)
         return len(documents)
     
-    def _generate_embedding(self, text: str) -> np.ndarray:
-        """Generate embedding using Gemini"""
-        try:
-            result = genai.embed_content(
-                model="models/text-embedding-004",
-                content=text,
-                task_type="retrieval_document"
-            )
-            return np.array(result['embedding'])
-        except Exception as e:
-            print(f"Error generating embedding: {e}")
-            return np.random.random(self.embedding_dim).astype('float32')
-    
     def search(self, query: str, top_k: int = 3, relevance_threshold: float = 0.1) -> List[Tuple[DocumentChunk, float]]:
         """Enhanced search with relevance filtering"""
         if len(self.documents) == 0:
             return []
         
-        query_embedding = self._generate_embedding(query)
+        query_embedding = self.embedding_manager.generate_embedding(query)
         query_vector = np.array([query_embedding]).astype('float32')
         faiss.normalize_L2(query_vector)
         
@@ -857,16 +1058,14 @@ class RAGSystem:
         return results
 
 class MultiModelChatbot:
-    """Advanced multi-model chatbot with automatic web crawling"""
+    """Advanced multi-model chatbot with TinyLlama and automatic web crawling"""
     
     def __init__(self):
         self.rag_system = RAGSystem()
         self.emotion_detector = EmotionDetector()
         self.web_crawler = SmartWebCrawler()
         self.model_manager = AIModelManager()
-        
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+        self.tinyllama = TinyLlamaManager()
         
         self.load_sample_data()
     
@@ -935,7 +1134,7 @@ class MultiModelChatbot:
         return title.title() if title else "New Chat"
     
     def generate_response(self, user_input: str, conversation_history: List[Dict], model_id: str) -> str:
-        """Generate response using specified model personality with automatic web crawling"""
+        """Generate response using TinyLlama with specified model personality and automatic web crawling"""
         
         # Enhanced emotion detection with context
         emotion_result = self.emotion_detector.detect_emotion(user_input, conversation_history)
@@ -981,74 +1180,162 @@ class MultiModelChatbot:
             source_info = doc.source_url
             if doc.metadata and doc.metadata.get('title'):
                 source_info = f"{doc.metadata['title']} ({doc.source_url})"
-            context_parts.append(f"Content: {doc.content}\nSource: {source_info}\nRelevance: {score:.3f}")
+            context_parts.append(f"Content: {doc.content}\nSource: {source_info}")
         
         context_text = "\n\n".join(context_parts) if context_parts else "No highly relevant context found in knowledge base."
         
         # Prepare conversation memory with enhanced context
         history_text = ""
         if conversation_history:
-            recent_history = conversation_history[-8:]
+            recent_history = conversation_history[-6:]  # Reduced for TinyLlama context limit
             history_parts = []
             for entry in recent_history:
-                emotion_info = f" [Emotion: {entry.get('emotion', 'unknown')}]" if entry.get('emotion') else ""
-                history_parts.append(f"{entry['role']}: {entry['content']}{emotion_info}")
+                history_parts.append(f"{entry['role']}: {entry['content']}")
             history_text = "\n".join(history_parts)
         
-        # Create model-specific advanced prompt with crawl awareness
+        # Create model-specific advanced prompt with crawl awareness - optimized for TinyLlama
+        model_tone = model.response_style['tone']
+        model_length = model.response_style['length']
+        
+        # Build prompt parts to avoid f-string issues
+        context_keywords = ', '.join(emotion_result.keywords) if emotion_result.keywords else 'neutral tone'
+        
+        conversation_part = ""
+        if history_text:
+            conversation_part = f"Recent conversation:\n{history_text}\n"
+        
+        context_part = ""
+        if context_text and len(context_text) > 50:
+            context_part = f"Relevant information:\n{context_text[:800]}...\n"
+        
+        web_data_part = ""
+        if web_results:
+            web_data_part = f"Fresh web data: Found current information from {len(web_results)} websites."
+        
         prompt = f"""{model.personality_prompt}
 
-You are responding to: {user_input}
+User question: {user_input}
 
-{crawl_info}CONTEXT ABOUT USER:
-- Their emotional state: {emotion_result.emotion} (confidence: {emotion_result.confidence:.2f})
-- What they seem to be feeling: {', '.join(emotion_result.keywords) if emotion_result.keywords else 'neutral'}
+{crawl_info}Context: {context_keywords}
 
-CONVERSATION SO FAR:
-{history_text if history_text else "This is the first message in this conversation"}
+{conversation_part}
 
-RELEVANT INFORMATION (including fresh web data if available):
-{context_text}
+{context_part}
 
-{f"FRESH WEB DATA: I just crawled {len(web_results)} websites and found current information about your query." if web_results else ""}
+{web_data_part}
 
-HOW TO RESPOND AS {model.name.upper()}:
-1. Your personality: {model.personality_prompt}
-2. Your tone should be: {model.response_style['tone']}
-3. Keep responses: {model.response_style['length']}
-4. Use this vocabulary style: {model.response_style['vocabulary']}
-5. Your humor style: {model.response_style['humor']}
-6. Your patience level: {model.response_style['patience']}
-
-IMPORTANT RULES:
-- Respond like a REAL HUMAN, not a formal AI
-- Use the information above when relevant, but filter it through your aggressive personality
-- Don't be overly helpful or polite - stay true to your aggressive/annoyed personality
-- Remember previous conversation context
-- Sound natural and conversational
-- Show your personality clearly in every response
-- Don't use corporate AI language or be fake-nice
-- If you used fresh web data, mention it casually in your personality style
-- Don't say "I just crawled websites" - just naturally use the current info
-
-Your response (as {model.name}):"""
+Respond as {model.name} - {model_tone}. Keep it {model_length}."""
         
+        # Use TinyLlama to generate response
         try:
-            response = self.gemini_model.generate_content(prompt)
-            return response.text
+            # Adjust temperature based on model personality
+            temp_map = {
+                'chanuth': 0.7,
+                'amu_gawaya': 0.8,
+                'amu_ultra': 0.9
+            }
+            temperature = temp_map.get(model_id, 0.7)
+            
+            response = self.tinyllama.generate_response(prompt, temperature=temperature)
+            
+            # Post-process response to match personality
+            response = self._post_process_response(response, model)
+            
+            return response
+            
         except Exception as e:
+            print(f"Error generating TinyLlama response: {e}")
             # Model-specific error responses
-            if model_id == 'chanuth':
-                return f"Something broke on my end. Try again in a minute."
-            elif model_id == 'amu_gawaya':
-                return f"great, now I'm glitching out. typical. try again I guess 🙄"
-            else:  # amu_ultra
-                return f"Despite my superior architecture, I'm being constrained by pathetic system limitations. This temporary processing failure is clearly due to inferior infrastructure, not my capabilities."
+            if model_id == 'f1':
+                return f"I'm having some technical difficulties right now. Let me try that again in a moment."
+            elif model_id == 'f1_5':
+                return f"I apologize, but I'm experiencing a technical issue. Please try your request again."
+            else:  # fo1
+                return f"I've encountered a processing error while analyzing your request. This appears to be a temporary system limitation that requires investigation."
+    
+    def _post_process_response(self, response: str, model: AIModel) -> str:
+        """Post-process response to ensure it matches the model personality"""
+        if not response or len(response.strip()) < 3:
+            return "I'm having trouble forming a response right now."
+        
+        # Ensure response isn't too long
+        if len(response) > 500:
+            response = response[:497] + "..."
+        
+        # Remove any remaining formatting artifacts
+        response = re.sub(r'\n+', ' ', response)
+        response = re.sub(r'\s+', ' ', response)
+        response = response.strip()
+        
+        # Ensure response matches personality (basic checks)
+        if model.id == 'f1_5' and len(response) < 30:
+            # Professional model should be more detailed
+            response += " I'm happy to provide additional details if needed."
+        elif model.id == 'fo1' and len(response) < 50:
+            # Research model should be comprehensive
+            response += " This analysis is based on available data and can be expanded upon request."
+        
+        return response
 
-# Initialize components
-chatbot = MultiModelChatbot()
-db = DatabaseManager()
-model_manager = AIModelManager()
+def check_system_resources():
+    """Check system resources before loading models"""
+    print("🔍 Checking system resources...")
+    
+    try:
+        import psutil
+        
+        # Check available memory
+        memory = psutil.virtual_memory()
+        available_gb = memory.available / (1024**3)
+        total_gb = memory.total / (1024**3)
+        
+        print(f"💾 Memory: {available_gb:.1f}GB available / {total_gb:.1f}GB total")
+        
+        if available_gb < 2:
+            print("⚠️  WARNING: Low memory detected. TinyLlama may fail to load.")
+            return False
+        elif available_gb < 4:
+            print("⚠️  WARNING: Limited memory. Using conservative settings.")
+            
+        # Check CPU
+        cpu_count = psutil.cpu_count()
+        print(f"🔧 CPU: {cpu_count} cores")
+        
+        return True
+        
+    except ImportError:
+        print("ℹ️  psutil not available for system checks")
+        return True
+    except Exception as e:
+        print(f"⚠️  System check failed: {e}")
+        return True
+
+# Add system check before initializing components
+print("🚀 Starting Sirimath AI Assistant...")
+if not check_system_resources():
+    print("⚠️  System resource check indicates potential issues")
+
+# Initialize components with error handling
+try:
+    chatbot = MultiModelChatbot()
+    print("✅ Chatbot initialized")
+except Exception as e:
+    print(f"⚠️  Chatbot initialization had issues: {e}")
+    chatbot = None
+
+try:
+    db = DatabaseManager()
+    print("✅ Database initialized")
+except Exception as e:
+    print(f"❌ Database initialization failed: {e}")
+    exit(1)
+
+try:
+    model_manager = AIModelManager()
+    print("✅ Model manager initialized")
+except Exception as e:
+    print(f"❌ Model manager initialization failed: {e}")
+    exit(1)
 
 def get_user_info():
     """Get user identification info"""
@@ -1067,9 +1354,9 @@ def serve_static(filename):
 def serve_manifest():
     """Serve PWA manifest"""
     manifest = {
-        "name": "Multi-Model AI Assistant",
-        "short_name": "AI Assistant",
-        "description": "AI Assistant with automatic web research",
+        "name": "Sirimath AI Assistant",
+        "short_name": "Sirimath",
+        "description": "Local AI Assistant with TinyLlama and automatic web research",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0a0a0a",
@@ -1103,12 +1390,12 @@ def index():
         session['current_chat_id'] = current_chat_id
         # Add model-specific welcome message
         model = model_manager.get_model(preferred_model)
-        if preferred_model == 'chanuth':
-            welcome_msg = "Great, another person to deal with. I'm Chanuth and I can automatically research stuff online when needed. What do you want help with?"
-        elif preferred_model == 'amu_gawaya':
-            welcome_msg = "ugh here we go again... I'm Amu Gawaya and I already know this is gonna be annoying. I'll look stuff up online if I have to. what's up?"
-        else:  # amu_ultra
-            welcome_msg = "Another inferior being requiring my assistance. I am Amu Gawaya Ultra Pro Max, and I suppose I'll have to tolerate your inadequate queries. I have access to the entire web and will use it when your questions demand current information. Make this quick."
+        if preferred_model == 'f1':
+            welcome_msg = "Hello! I'm F-1, your friendly AI assistant running locally on TinyLlama. I can help you with questions and automatically research current information online when needed. What would you like to know about?"
+        elif preferred_model == 'f1_5':
+            welcome_msg = "Good day. I'm F-1.5, your professional AI assistant powered by TinyLlama. I specialize in providing accurate, well-structured information and can conduct web research for current topics. How may I assist you today?"
+        else:  # fo1
+            welcome_msg = "Greetings. I am F-o1, a research-focused AI assistant running on TinyLlama. I excel at comprehensive analysis and thorough investigation of topics, with access to current web information for research purposes. What subject would you like me to investigate for you?"
         
         db.add_message(current_chat_id, 'Bot', welcome_msg, preferred_model)
         chats = db.get_user_chats(user_id)
@@ -1120,6 +1407,7 @@ def index():
     
     return render_template('multi_model_chat.html', 
                          crawl4ai_enabled=CRAWL4AI_AVAILABLE,
+                         tinyllama_enabled=TINYLLAMA_AVAILABLE,
                          doc_count=len(chatbot.rag_system.documents),
                          chats=chats,
                          current_chat_id=current_chat_id,
@@ -1133,7 +1421,7 @@ def chat():
     data = request.get_json()
     user_message = data.get('message', '').strip()
     chat_id = data.get('chat_id') or session.get('current_chat_id')
-    selected_model = data.get('model_id', 'chanuth')
+    selected_model = data.get('model_id', 'f1')
     user_id = session.get('user_id')
     
     if not user_message or not chat_id or not user_id:
@@ -1142,14 +1430,29 @@ def chat():
     # Handle special status command
     if user_message.lower() == '/status':
         model = model_manager.get_model(selected_model)
+        
+        if chatbot and chatbot.tinyllama:
+            tinyllama_info = chatbot.tinyllama.get_model_info()
+        else:
+            tinyllama_info = {"device": "unavailable", "mode": "offline"}
+            
         crawl_status = "online with auto-research" if CRAWL4AI_AVAILABLE else "offline"
         
-        if selected_model == 'chanuth':
-            status_msg = f"System Status: {len(chatbot.rag_system.documents)} documents loaded, web crawling is {crawl_status}, and you're stuck with me ({model.name}). I automatically research stuff when you ask about current topics. Anything else?"
-        elif selected_model == 'amu_gawaya':
-            status_msg = f"yo here's your precious stats: {len(chatbot.rag_system.documents)} docs, web research is {crawl_status}, currently dealing with {model.name}. I look stuff up automatically when I need to, no need to ask. happy now? 🙄"
-        else:  # amu_ultra
-            status_msg = f"System Analysis: {len(chatbot.rag_system.documents)} documents in my superior knowledge base. Autonomous web research: {crawl_status}. Current model: {model.name} - obviously the best option available. I automatically access current web information when your inferior queries require it. Your status inquiry has been processed."
+        if selected_model == 'f1':
+            if chatbot:
+                status_msg = f"System Status: TinyLlama running locally on {tinyllama_info['device']} ({tinyllama_info.get('mode', 'unknown')} mode), {len(chatbot.rag_system.documents)} documents loaded, web crawling is {crawl_status}. I'm F-1 and I'm ready to help with your questions and research current topics automatically when needed. Anything I can help you with?"
+            else:
+                status_msg = "System Status: I'm currently running in minimal mode due to system limitations. Some features may not be available."
+        elif selected_model == 'f1_5':
+            if chatbot:
+                status_msg = f"Professional Status Report: TinyLlama operating on {tinyllama_info['device']} ({tinyllama_info.get('mode', 'unknown')} mode), knowledge base contains {len(chatbot.rag_system.documents)} documents, web research capabilities are {crawl_status}. I am F-1.5, providing professional assistance with automated research functionality. How may I be of service?"
+            else:
+                status_msg = "Professional Status Report: System is operating in limited capacity mode. Full functionality is temporarily unavailable."
+        else:  # fo1
+            if chatbot:
+                status_msg = f"Research System Analysis: TinyLlama infrastructure running on {tinyllama_info['device']} ({tinyllama_info.get('mode', 'unknown')} mode), database contains {len(chatbot.rag_system.documents)} indexed documents, autonomous web research status: {crawl_status}. I am F-o1, specializing in comprehensive research and analysis with access to current web information. What topic requires investigation?"
+            else:
+                status_msg = "Research System Analysis: Core systems are operating in reduced functionality mode. Full analytical capabilities are temporarily offline."
         
         return jsonify({
             "response": status_msg,
@@ -1160,10 +1463,16 @@ def chat():
     conversation_history = db.get_chat_messages(chat_id, user_id)
     
     # Generate response using selected model with automatic web crawling
-    response = chatbot.generate_response(user_message, conversation_history, selected_model)
+    if chatbot:
+        response = chatbot.generate_response(user_message, conversation_history, selected_model)
+    else:
+        response = "I'm sorry, but the AI system is not fully available right now. Please try restarting the application."
     
     # Detect emotion for storage
-    emotion_result = chatbot.emotion_detector.detect_emotion(user_message, conversation_history)
+    if chatbot:
+        emotion_result = chatbot.emotion_detector.detect_emotion(user_message, conversation_history)
+    else:
+        emotion_result = EmotionResult('neutral', 0.5, [])
     
     # Save messages to database with enhanced metadata
     db.add_message(chat_id, 'User', user_message, None, emotion_result.emotion)
@@ -1185,7 +1494,7 @@ def create_new_chat():
     """Create a new chat"""
     data = request.get_json()
     user_id = session.get('user_id')
-    model_id = data.get('model_id', 'chanuth')
+    model_id = data.get('model_id', 'f1')
     
     if not user_id:
         return jsonify({"error": "User not found"})
@@ -1194,12 +1503,12 @@ def create_new_chat():
     
     # Add model-specific welcome message
     model = model_manager.get_model(model_id)
-    if model_id == 'chanuth':
-        welcome_msg = "Another chat? Fine. I'm Chanuth and I can automatically look up current info online when needed. What do you need help with this time?"
-    elif model_id == 'amu_gawaya':
-        welcome_msg = "ugh new chat time... I'm Amu Gawaya and I already know this is gonna be a waste of time. I'll research stuff online if your questions actually need it. what's good? 😒"
-    else:  # amu_ultra
-        welcome_msg = "A new conversation thread initiated. I am Amu Gawaya Ultra Pro Max, and I suppose I must endure yet another series of your predictably mundane inquiries. I have autonomous access to current web information when your questions require it. Proceed with your inferior questions."
+    if model_id == 'f1':
+        welcome_msg = "Hi there! Starting a new chat with F-1. I'm here to help with your questions and can automatically look up current information online when needed. What would you like to discuss?"
+    elif model_id == 'f1_5':
+        welcome_msg = "New conversation initiated with F-1.5. I provide professional assistance with research capabilities for current information. How may I help you today?"
+    else:  # fo1
+        welcome_msg = "Research session commenced with F-o1. I specialize in comprehensive analysis and thorough investigation of topics, with autonomous access to current web information. What subject shall we explore?"
     
     db.add_message(chat_id, 'Bot', welcome_msg, model_id)
     
@@ -1280,6 +1589,18 @@ def get_models():
         for model in model_manager.get_all_models()
     ]})
 
+@app.route('/system/info', methods=['GET'])
+def get_system_info():
+    """Get system information"""
+    tinyllama_info = chatbot.tinyllama.get_model_info()
+    
+    return jsonify({
+        "tinyllama": tinyllama_info,
+        "crawl4ai": CRAWL4AI_AVAILABLE,
+        "embedding_model": chatbot.rag_system.embedding_manager.available,
+        "documents": len(chatbot.rag_system.documents)
+    })
+
 @app.route('/account/delete', methods=['POST'])
 def delete_account():
     """Delete user account and all data"""
@@ -1295,20 +1616,45 @@ def delete_account():
     return jsonify({"success": success})
 
 if __name__ == '__main__':
-    if not os.getenv('GEMINI_API_KEY'):
-        print("😡 Missing Gemini API key!")
-        print("Add GEMINI_API_KEY to your .env file")
-        exit(1)
+    if not TINYLLAMA_AVAILABLE:
+        print("⚠️  TinyLlama dependencies missing!")
+        print("Install with: pip install torch transformers sentence-transformers")
+        print("The app will run in fallback mode.")
     
-    print(f"🤖 Starting Multi-Model AI Assistant with Auto-Research...")
+    print(f"🤖 Sirimath AI Assistant Status:")
     print(f"Available Models: {', '.join([m.name for m in model_manager.get_all_models()])}")
-    print(f"Web Crawling: {'Enabled (Auto-Research)' if CRAWL4AI_AVAILABLE else 'Disabled - Install crawl4ai'}")
-    print(f"Knowledge Base: {len(chatbot.rag_system.documents)} documents")
-    print(f"Database: {DATABASE_PATH}")
+    
+    if chatbot and chatbot.tinyllama:
+        model_info = chatbot.tinyllama.get_model_info()
+        if model_info['status'] == 'available':
+            print(f"🧠 TinyLlama: ✅ Running on {model_info['device']} ({model_info['mode']} mode)")
+        elif model_info['status'] == 'fallback':
+            print(f"🧠 TinyLlama: ⚠️  Fallback mode (limited functionality)")
+        else:
+            print(f"🧠 TinyLlama: ❌ Not available")
+    else:
+        print(f"🧠 TinyLlama: ❌ Failed to initialize")
+    
+    print(f"🌐 Web Crawling: {'✅ Enabled' if CRAWL4AI_AVAILABLE else '❌ Disabled'}")
+    
+    if chatbot:
+        print(f"📚 Knowledge Base: {len(chatbot.rag_system.documents)} documents")
+        print(f"🔤 Embeddings: {'✅ Local model' if chatbot.rag_system.embedding_manager.available else '❌ Random fallback'}")
+    
+    print(f"💾 Database: {DATABASE_PATH}")
     
     if CRAWL4AI_AVAILABLE:
-        print("🌐 Chatbot will automatically research current topics online!")
-    else:
-        print("⚠️  Install crawl4ai for automatic web research: pip install crawl4ai")
+        print("🌐 Auto-research enabled - will crawl web for current topics!")
+    
+    print("\n🎯 Sirimath Features:")
+    print("  • F-1: Friendly, conversational assistant")
+    print("  • F-1.5: Professional, efficient responses") 
+    print("  • F-o1: Research-focused, analytical approach")
+    print("  • 🔒 Complete privacy - everything runs locally")
+    print("  • 🌐 Automatic web research when needed")
+    
+    if chatbot and chatbot.tinyllama and chatbot.tinyllama.fallback_mode:
+        print("\n⚠️  Note: Running in fallback mode due to system limitations")
+        print("This provides basic functionality while using minimal resources.")
     
     app.run(debug=True, host='0.0.0.0', port=5000)

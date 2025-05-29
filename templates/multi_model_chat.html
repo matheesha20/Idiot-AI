@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Multi-Model AI Assistant with Auto-Research</title>
+    <title>Sirimath AI Assistant</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/static/logo.png">
@@ -88,13 +88,30 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        .auto-research-notice {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        .local-ai-notice {
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
             color: white;
             padding: 0.75rem;
             border-radius: 8px;
             margin-bottom: 1rem;
             font-size: 0.85rem;
+            text-align: center;
+            font-weight: 500;
+            border: 1px solid #8b5cf6;
+        }
+
+        .local-ai-notice.disabled {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border-color: #ef4444;
+        }
+
+        .auto-research-notice {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
             text-align: center;
             font-weight: 500;
             border: 1px solid #10b981;
@@ -140,6 +157,11 @@
             border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 500;
+        }
+
+        .feature-tag.local-ai {
+            background: #7c3aed;
+            color: white;
         }
 
         .feature-tag.auto-research {
@@ -264,17 +286,17 @@
             font-weight: 500;
         }
 
-        .chat-model-badge.chanuth {
+        .chat-model-badge.f1 {
             background: #059669;
             color: white;
         }
 
-        .chat-model-badge.amu_gawaya {
+        .chat-model-badge.f1_5 {
             background: #dc2626;
             color: white;
         }
 
-        .chat-model-badge.amu_ultra {
+        .chat-model-badge.fo1 {
             background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
             color: white;
         }
@@ -425,15 +447,15 @@
             border-radius: 50%;
         }
 
-        .model-indicator.chanuth {
+        .model-indicator.f1 {
             background: #059669;
         }
 
-        .model-indicator.amu_gawaya {
+        .model-indicator.f1_5 {
             background: #dc2626;
         }
 
-        .model-indicator.amu_ultra {
+        .model-indicator.fo1 {
             background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
         }
 
@@ -450,6 +472,11 @@
 
         .status-highlight {
             color: #10b981;
+            font-weight: 500;
+        }
+
+        .status-local {
+            color: #8b5cf6;
             font-weight: 500;
         }
 
@@ -479,7 +506,6 @@
             scrollbar-color: #333 #111;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
-            /* Ensure proper height calculation on mobile */
             min-height: 0;
         }
 
@@ -535,25 +561,37 @@
             font-weight: 500;
         }
 
-        .message-model-badge.chanuth {
+        .message-model-badge.f1 {
             background: #059669;
             color: white;
         }
 
-        .message-model-badge.amu_gawaya {
+        .message-model-badge.f1_5 {
             background: #dc2626;
             color: white;
         }
 
-        .message-model-badge.amu_ultra {
+        .message-model-badge.fo1 {
             background: linear-gradient(135deg, #7c3aed 0%, #c084fc 100%);
+            color: white;
+        }
+
+        .local-ai-indicator {
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: #7c3aed;
             color: white;
         }
 
         .research-indicator {
             position: absolute;
             top: -8px;
-            right: 12px;
+            right: 80px;
             padding: 0.2rem 0.5rem;
             border-radius: 10px;
             font-size: 0.7rem;
@@ -753,17 +791,6 @@
             color: white;
         }
 
-        @keyframes pulse {
-            0%, 100% { 
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% { 
-                transform: scale(1.1);
-                opacity: 0.8;
-            }
-        }
-
         .research-progress-bar {
             width: 100%;
             height: 4px;
@@ -919,7 +946,7 @@
                 flex: 1;
                 display: flex;
                 flex-direction: column;
-                height: calc(100vh - 140px); /* Adjust for header and status bar */
+                height: calc(100vh - 150px);
                 overflow: hidden;
             }
 
@@ -931,7 +958,6 @@
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
                 touch-action: pan-y;
-                /* Fix for iOS Safari */
                 -webkit-transform: translate3d(0,0,0);
             }
 
@@ -939,7 +965,6 @@
                 max-width: 95%;
                 padding: 0.75rem;
                 font-size: 0.9rem;
-                /* Prevent text selection interference with scrolling */
                 -webkit-user-select: text;
                 user-select: text;
                 -webkit-touch-callout: default;
@@ -1050,8 +1075,6 @@
 
         /* Touch improvements */
         @media (hover: none) and (pointer: coarse) {
-            /* Mobile touch device specific styles */
-            
             .chat-delete {
                 opacity: 1;
             }
@@ -1062,7 +1085,6 @@
                 transform: none;
             }
 
-            /* Ensure scrollable areas work properly on touch devices */
             .chat-messages,
             .chats-list,
             .sidebar {
@@ -1070,24 +1092,21 @@
                 touch-action: pan-y;
             }
 
-            /* Fix for iOS Safari address bar hide/show */
             .main-content {
                 height: 100vh;
                 height: -webkit-fill-available;
             }
 
             .chat-container {
-                height: calc(100vh - 140px);
-                height: calc(-webkit-fill-available - 140px);
+                height: calc(100vh - 150px);
+                height: calc(-webkit-fill-available - 150px);
             }
 
-            /* Prevent zoom on input focus */
             .message-input,
             .model-select {
                 font-size: 16px;
             }
 
-            /* Improve touch targets */
             .chat-item,
             .new-chat-btn,
             .send-button,
@@ -1103,18 +1122,8 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="auto-research-notice {% if not crawl4ai_enabled %}disabled{% endif %}">
-                {% if crawl4ai_enabled %}
-                    🌐 Auto-Research Enabled
-                    <br>AI will automatically research topics online
-                {% else %}
-                    ⚠️ Auto-Research Disabled
-                    <br>Install crawl4ai for web research
-                {% endif %}
-            </div>
-
             <div class="model-selector">
-                <label for="modelSelect">Choose AI Model:</label>
+                <label for="modelSelect">Choose AI Personality:</label>
                 <select class="model-select" id="modelSelect">
                     {% for model in models %}
                     <option value="{{ model.id }}" {% if model.id == preferred_model %}selected{% endif %}>
@@ -1144,9 +1153,9 @@
                     <div class="chat-title">{{ chat.title }}</div>
                     <div class="chat-meta">
                         <span class="chat-model-badge {{ chat.model_id }}">
-                            {% if chat.model_id == 'chanuth' %}Chanuth
-                            {% elif chat.model_id == 'amu_gawaya' %}Amu Gawaya
-                            {% else %}Amu Ultra{% endif %}
+                            {% if chat.model_id == 'f1' %}F-1
+                            {% elif chat.model_id == 'f1_5' %}F-1.5
+                            {% else %}F-o1{% endif %}
                         </span>
                         <span>{{ chat.message_count }} messages</span>
                     </div>
@@ -1160,11 +1169,8 @@
             <div class="account-section">
                 <div class="account-info">
                     User ID: {{ user_id[:8] }}...<br>
-                    Auto-generated account
+                    Sirimath AI Account
                 </div>
-                <button class="delete-account-btn" id="deleteAccountBtn">
-                    🗑️ Delete Account
-                </button>
             </div>
         </div>
     </div>
@@ -1178,7 +1184,7 @@
             <div class="header-left">
                 <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
                 <img src="/static/logo.png" alt="Logo" class="app-logo" onerror="this.style.display='none'">
-                <h1 class="header-title">AI Assistant</h1>
+                <h1 class="header-title">Sirimath</h1>
             </div>
             <div class="current-model-display" id="currentModelDisplay">
                 <div class="model-indicator" id="modelIndicator"></div>
@@ -1187,7 +1193,13 @@
         </div>
 
         <div class="status-bar">
-            Knowledge Base: {{ doc_count }} documents | 
+            Sirimath: 
+            {% if tinyllama_enabled %}
+                <span class="status-local">Running Locally</span>
+            {% else %}
+                <span class="status-disabled">Not Available</span>
+            {% endif %}
+            | Knowledge Base: {{ doc_count }} documents | 
             Auto-Research: 
             {% if crawl4ai_enabled %}
                 <span class="status-highlight">Online & Active</span>
@@ -1220,11 +1232,11 @@
                         </li>
                         <li class="research-step" id="step-process">
                             <div class="step-icon">4</div>
-                            <span>Processing information</span>
+                            <span>Processing with TinyLlama</span>
                         </li>
                         <li class="research-step" id="step-respond">
                             <div class="step-icon">5</div>
-                            <span>Generating response</span>
+                            <span>Generating local response</span>
                         </li>
                     </ul>
                     
@@ -1247,7 +1259,7 @@
                 <input type="text" 
                        class="message-input" 
                        id="messageInput" 
-                       placeholder="Ask anything - I'll research it automatically if needed!" 
+                       placeholder="Ask anything - Sirimath will research automatically if needed!" 
                        maxlength="500"
                        autocomplete="off">
                 <button class="send-button" id="sendButton">Send 🚀</button>
@@ -1265,6 +1277,7 @@
         // Models data
         const modelsData = {{ models | tojson }};
         const autoResearchEnabled = {{ crawl4ai_enabled | tojson }};
+        const tinyLlamaEnabled = {{ tinyllama_enabled | tojson }};
         
         // DOM elements
         const sidebar = document.getElementById('sidebar');
@@ -1281,7 +1294,6 @@
         const crawlResults = document.getElementById('crawlResults');
         const crawlResultsList = document.getElementById('crawlResultsList');
         const newChatBtn = document.getElementById('newChatBtn');
-        const deleteAccountBtn = document.getElementById('deleteAccountBtn');
         const chatsList = document.getElementById('chatsList');
         const currentChatTitle = document.getElementById('currentChatTitle');
         const modelSelect = document.getElementById('modelSelect');
@@ -1377,9 +1389,6 @@
             // New chat
             newChatBtn.addEventListener('click', createNewChat);
 
-            // Delete account
-            deleteAccountBtn.addEventListener('click', confirmDeleteAccount);
-
             // Chat list delegation
             chatsList.addEventListener('click', handleChatListClick);
 
@@ -1408,7 +1417,13 @@
             featuresContainer.innerHTML = '';
             model.special_features.forEach(feature => {
                 const tag = document.createElement('span');
-                tag.className = feature === 'Auto web research' || feature.includes('research') ? 'feature-tag auto-research' : 'feature-tag';
+                if (feature.includes('Local') || feature.includes('TinyLlama')) {
+                    tag.className = 'feature-tag local-ai';
+                } else if (feature.includes('research')) {
+                    tag.className = 'feature-tag auto-research';
+                } else {
+                    tag.className = 'feature-tag';
+                }
                 tag.textContent = feature;
                 featuresContainer.appendChild(tag);
             });
@@ -1477,7 +1492,7 @@
                 chatMessages.innerHTML = '';
                 
                 if (data.messages.length === 0) {
-                    chatMessages.innerHTML = '<div class="empty-state"><h3>Empty Chat</h3><p>Start a conversation!</p></div>';
+                    chatMessages.innerHTML = '<div class="empty-state"><h3>Empty Chat</h3><p>Start a conversation with your local Sirimath!</p></div>';
                 } else {
                     data.messages.forEach(message => {
                         addMessage(message.content, message.role.toLowerCase(), message.timestamp, message.model_id);
@@ -1569,30 +1584,6 @@
             }
         }
 
-        async function confirmDeleteAccount() {
-            if (confirm('⚠️ WARNING: This will permanently delete your account and ALL your chats. This action cannot be undone. Are you sure?')) {
-                if (confirm('🚨 FINAL WARNING: All your data will be lost forever. Continue?')) {
-                    try {
-                        const response = await fetch('/account/delete', {
-                            method: 'POST'
-                        });
-
-                        const data = await response.json();
-
-                        if (data.success) {
-                            alert('Account deleted successfully. Refreshing page...');
-                            window.location.reload();
-                        } else {
-                            alert('Failed to delete account');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting account:', error);
-                        alert('Error deleting account');
-                    }
-                }
-            }
-        }
-
         async function refreshChatsList() {
             try {
                 const response = await fetch('/chats');
@@ -1600,11 +1591,11 @@
 
                 if (data.chats) {
                     chatsList.innerHTML = '';
-                    data.chats.forEach(chat => {
+                    data.                    chats.forEach(chat => {
                         const modelNames = {
-                            'chanuth': 'Chanuth',
-                            'amu_gawaya': 'Amu Gawaya',
-                            'amu_ultra': 'Amu Ultra'
+                            'f1': 'F-1',
+                            'f1_5': 'F-1.5',
+                            'fo1': 'F-o1'
                         };
 
                         const chatItem = document.createElement('div');
@@ -1666,8 +1657,8 @@
                 { id: 'step-analyze', title: 'Analyzing your question', duration: 500 },
                 { id: 'step-urls', title: 'Finding relevant websites', duration: 800 },
                 { id: 'step-crawl', title: 'Crawling web content', duration: 2000 },
-                { id: 'step-process', title: 'Processing information', duration: 1000 },
-                { id: 'step-respond', title: 'Generating response', duration: 500 }
+                { id: 'step-process', title: 'Processing with TinyLlama', duration: 1500 },
+                { id: 'step-respond', title: 'Generating local response', duration: 800 }
             ];
 
             let currentStep = 0;
@@ -1723,7 +1714,7 @@
                     });
                     
                     researchProgressFill.style.width = '100%';
-                    researchTitle.textContent = 'Research complete!';
+                    researchTitle.textContent = 'TinyLlama processing complete!';
                 }
             }
 
@@ -1798,7 +1789,7 @@
             // Show loading state
             isLoading = true;
             sendButton.disabled = true;
-            sendButton.textContent = 'Researching...';
+            sendButton.textContent = tinyLlamaEnabled ? 'Sirimath Thinking...' : 'Processing...';
 
             try {
                 const response = await fetch('/chat', {
@@ -1842,15 +1833,21 @@
             const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
             
             let modelBadge = '';
+            let localIndicator = '';
             let researchBadge = '';
             
             if (role === 'bot' && modelId) {
                 const modelNames = {
-                    'chanuth': 'Chanuth',
-                    'amu_gawaya': 'Amu Gawaya',  
-                    'amu_ultra': 'Amu Ultra'
+                    'f1': 'F-1',
+                    'f1_5': 'F-1.5',  
+                    'fo1': 'F-o1'
                 };
                 modelBadge = `<div class="message-model-badge ${modelId}">${modelNames[modelId] || 'AI'}</div>`;
+                
+                // Always show local indicator for bot messages
+                if (tinyLlamaEnabled) {
+                    localIndicator = `<div class="local-ai-indicator">🧠 Local</div>`;
+                }
                 
                 // Show research indicator if content seems to contain fresh information
                 if (autoResearchEnabled && (content.includes('recently') || content.includes('currently') || content.includes('latest'))) {
@@ -1860,6 +1857,7 @@
             
             messageDiv.innerHTML = `
                 ${modelBadge}
+                ${localIndicator}
                 ${researchBadge}
                 <div>${content}</div>
                 <div class="message-time">${timeStr}</div>

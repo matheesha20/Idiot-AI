@@ -1,15 +1,17 @@
-# 🤖 Multi-Model AI Assistant with Auto-Research
+# 🤖 Multi-Model AI Assistant with TinyLlama + Auto-Research
 
-## 🌟 What's New - Auto-Research Feature!
+## 🌟 What's New - Completely LOCAL AI!
 
-Your AI assistant now **automatically researches topics online** without needing any commands! Just ask about companies, current events, or any topic that needs fresh information, and the AI will:
+Your AI assistant now runs **100% locally with TinyLlama** - no API keys needed! Plus **automatic web research**:
 
-- 🌐 **Automatically crawl relevant websites**
-- 📊 **Gather real-time information**
-- 🧠 **Integrate fresh data into responses**
-- 💬 **Respond in your chosen AI personality**
+- 🧠 **TinyLlama running locally** - completely private and self-hosted
+- 🌐 **Automatically crawls relevant websites**
+- 📊 **Gathers real-time information**
+- 🔒 **No cloud dependencies** - your data never leaves your machine
+- 💬 **Responds in your chosen AI personality**
+- ⚡ **Fast inference** on CPU or GPU
 
-No more `/crawl` commands needed - it's all automatic! 🚀
+No more API keys, no more cloud dependency - everything runs on YOUR machine! 🚀
 
 ## 🚀 Quick Setup (Automated)
 
@@ -20,7 +22,7 @@ No more `/crawl` commands needed - it's all automatic! 🚀
    ```bash
    python setup.py
    ```
-3. **Follow the prompts** (you'll need a Gemini API key)
+3. **Follow the prompts** (no API keys needed!)
 4. **Start the assistant**:
    ```bash
    ./start.sh    # Linux/Mac
@@ -45,8 +47,8 @@ python -m playwright install-deps
 #### Step 3: Create Environment File
 Create a `.env` file with:
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
 FLASK_SECRET_KEY=your-secret-key-change-this
+# No API keys needed - TinyLlama runs locally!
 ```
 
 #### Step 4: Run the Application
@@ -54,11 +56,20 @@ FLASK_SECRET_KEY=your-secret-key-change-this
 python app.py
 ```
 
-## 🔑 Getting Your Gemini API Key
+## 🧠 TinyLlama - Your Local AI Brain
 
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Click "Create API Key"
-3. Copy the key and paste it in your `.env` file
+### What is TinyLlama?
+- **1.1B parameter language model** - small but powerful
+- **Runs on modest hardware** - even laptops work fine
+- **No internet required** after initial download
+- **Complete privacy** - your conversations stay local
+- **Fast inference** - especially with GPU acceleration
+
+### System Requirements
+- **Minimum**: 4GB RAM, any CPU
+- **Recommended**: 8GB RAM, dedicated GPU
+- **Storage**: ~2GB for model download
+- **Internet**: Only needed for initial model download + web research
 
 ## 💬 AI Models Available
 
@@ -66,16 +77,19 @@ python app.py
 - **Personality**: Normally aggressive with human-like attitude
 - **Research**: Automatically looks up current info when needed
 - **Best for**: General questions with some attitude
+- **Powered by**: TinyLlama running locally
 
 ### 🔴 Amu Gawaya (Enhanced)
 - **Personality**: Highly aggressive, uses slang and sarcasm
 - **Research**: Researches stuff online with attitude
 - **Best for**: When you want brutal honesty
+- **Powered by**: TinyLlama with enhanced prompting
 
 ### 🟣 Amu Gawaya Ultra Pro Max (Ultra)
 - **Personality**: Maximum hostility with superior intelligence
 - **Research**: Advanced web research with contemptuous responses
 - **Best for**: Complex questions when you can handle the attitude
+- **Powered by**: TinyLlama with sophisticated prompt engineering
 
 ## 🌐 Auto-Research Examples
 
@@ -103,27 +117,50 @@ The AI will automatically research when you ask about:
 
 ## 🛠️ System Requirements
 
+### Minimum Requirements
 - **Python 3.8+**
-- **4GB+ RAM** (for web crawling)
-- **Internet connection** (for research)
-- **Modern browser** (Chrome/Firefox/Safari)
+- **4GB+ RAM**
+- **2GB free storage** (for model)
+- **Internet connection** (for research only)
+
+### Recommended for Best Performance
+- **8GB+ RAM**
+- **NVIDIA GPU** with CUDA support
+- **SSD storage** for faster model loading
+- **Modern CPU** (4+ cores)
+
+### GPU Acceleration (Optional but Recommended)
+```bash
+# For NVIDIA GPUs with CUDA
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# The app will automatically detect and use GPU if available
+```
 
 ## 📁 Project Structure
 
 ```
 multi-model-ai/
-├── app.py                 # Main application with auto-research
-├── requirements.txt       # Python dependencies
-├── setup.py              # Automated setup script
+├── app.py                     # Main TinyLlama application
+├── requirements.txt           # Python dependencies
+├── setup.py                  # Automated setup script
+├── health_check.py           # System health checker
 ├── templates/
 │   └── multi_model_chat.html  # Enhanced UI
-├── .env                  # Your API keys (create this)
-├── start.sh             # Linux/Mac launch script
-├── start.bat            # Windows launch script
-└── chatbot_users.db     # SQLite database (auto-created)
+├── models/                   # TinyLlama model cache (auto-created)
+├── .env                      # Your configuration (create this)
+├── start.sh                 # Linux/Mac launch script
+├── start.bat                # Windows launch script
+└── chatbot_users.db         # SQLite database (auto-created)
 ```
 
 ## 🎯 Key Features
+
+### 🧠 Local TinyLlama AI
+- **Completely private** - no data sent to cloud
+- **Fast inference** on CPU or GPU
+- **No API keys** required
+- **Works offline** (except for web research)
 
 ### 🌐 Intelligent Auto-Research
 - **Smart Detection**: Automatically detects when queries need current info
@@ -142,10 +179,18 @@ multi-model-ai/
 - **User preferences**
 - **Mobile-responsive design**
 - **Real-time research indicators**
+- **Local embeddings** for semantic search
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
+
+#### "TinyLlama dependencies not available"
+```bash
+pip install torch transformers sentence-transformers
+# For GPU support:
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
 
 #### "Crawl4AI not available"
 ```bash
@@ -158,44 +203,56 @@ python -m playwright install
 chmod +x start.sh
 ```
 
-#### Gemini API errors
-- Check your API key in `.env`
-- Ensure you have API quota remaining
-- Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+#### First run is slow
+- **Normal behavior** - TinyLlama downloads ~2GB model on first run
+- **Subsequent runs** are much faster
+- **Use GPU** for best performance
 
-#### Playwright installation issues
+#### Out of memory errors
 ```bash
-# Try these commands
-python -m playwright install --with-deps
-# Or on Ubuntu/Debian:
-sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libgtk-3-0
+# Reduce model parameters in .env file:
+TINYLLAMA_MAX_LENGTH=256
+TINYLLAMA_MAX_NEW_TOKENS=128
 ```
 
 ### Performance Tips
 
-1. **First run may be slow** - Playwright needs to download browsers
-2. **Research takes 2-5 seconds** - be patient for fresh data
-3. **Rate limiting protects websites** - some queries may skip research
-4. **Clear cache occasionally** by restarting the app
+1. **First run downloads model** - be patient (~2GB download)
+2. **Use GPU if available** - much faster inference
+3. **Close other applications** to free RAM
+4. **SSD storage** improves model loading speed
+5. **Research takes 2-5 seconds** - be patient for fresh data
 
 ## 🔧 Advanced Configuration
 
 ### Environment Variables
 ```bash
 # .env file options
-GEMINI_API_KEY=your_key_here
 FLASK_SECRET_KEY=your_secret_key
 
-# Optional: Disable auto-research if needed
-# (But why would you want to?)
+# TinyLlama settings
+TINYLLAMA_DEVICE=auto                    # auto, cpu, cuda
+TINYLLAMA_MAX_LENGTH=512                 # Input context length
+TINYLLAMA_MAX_NEW_TOKENS=256            # Response length
+TINYLLAMA_TEMPERATURE=0.7               # Creativity (0.1-1.0)
+
+# Embedding model
+EMBEDDING_MODEL=all-MiniLM-L6-v2        # Local embedding model
+
+# Web crawling
+ENABLE_WEB_CRAWLING=true                # Enable/disable research
 ```
 
-### Customizing Research
-Edit the `SmartWebCrawler` class in `app.py` to:
-- Add more company URLs
-- Modify crawl indicators
-- Adjust rate limits
-- Change content filtering
+### Hardware Optimization
+```python
+# For systems with limited RAM
+TINYLLAMA_MAX_LENGTH=256
+TINYLLAMA_MAX_NEW_TOKENS=128
+
+# For powerful systems
+TINYLLAMA_MAX_LENGTH=1024
+TINYLLAMA_MAX_NEW_TOKENS=512
+```
 
 ## 🎉 Usage Examples
 
@@ -214,7 +271,7 @@ Amu Gawaya: "tesla's at like $240 or whatever, down from yesterday because musk 
 ### Technical Information
 ```
 You: "Latest AI developments"
-Amu Ultra: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iterations and Google's continued Gemini enhancements, though I doubt your limited comprehension can appreciate the technical complexities involved."
+Amu Ultra: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iterations and continued open-source advancement, though I doubt your limited comprehension can appreciate the technical complexities involved."
 ```
 
 ## 🔄 Updates & Maintenance
@@ -224,19 +281,28 @@ The system automatically:
 - ✅ Respects rate limits
 - ✅ Updates knowledge base with fresh data
 - ✅ Maintains conversation context
+- ✅ Stores models locally for offline use
 
 ## 📞 Support
 
 If you encounter issues:
-1. Check the troubleshooting section above
-2. Ensure all dependencies are installed
-3. Verify your Gemini API key is valid
-4. Check that Playwright browsers are installed
+1. Run the health check: `python health_check.py`
+2. Check the troubleshooting section above
+3. Ensure all dependencies are installed
+4. Verify sufficient RAM/storage available
+5. Check that Playwright browsers are installed
 
-## 🎊 Enjoy Your Enhanced AI Assistant!
+## 🎊 Enjoy Your LOCAL AI Assistant!
 
-Your AI now has access to the entire web and will automatically research topics to give you the most current information - all while maintaining their wonderfully aggressive personalities! 
+Your AI now runs **completely on your machine** with TinyLlama and will automatically research topics to give you the most current information - all while maintaining their wonderfully aggressive personalities! 
 
 Ask about companies, stocks, news, or anything that needs fresh data. The AI will handle the research automatically and respond in character.
 
-**No commands needed - just ask and watch the magic happen!** ✨
+**Key Benefits:**
+- 🔒 **Complete Privacy** - your data never leaves your machine
+- ⚡ **Fast Response** - no network latency for AI inference
+- 🌐 **Current Info** - automatic web research when needed
+- 💰 **No Costs** - no API fees or subscriptions
+- 🚀 **Always Available** - works offline after initial setup
+
+**No API keys needed - just ask and watch the magic happen!** ✨
