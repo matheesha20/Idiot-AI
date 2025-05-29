@@ -1,4 +1,4 @@
-# 🤖 Multi-Model AI Assistant with TinyLlama + Auto-Research
+# 🤖 Sirimath AI Assistant with TinyLlama + Auto-Research
 
 ## 🌟 What's New - Completely LOCAL AI!
 
@@ -8,8 +8,9 @@ Your AI assistant now runs **100% locally with TinyLlama** - no API keys needed!
 - 🌐 **Automatically crawls relevant websites**
 - 📊 **Gathers real-time information**
 - 🔒 **No cloud dependencies** - your data never leaves your machine
-- 💬 **Responds in your chosen AI personality**
+- 💬 **Three unique AI personalities** to choose from
 - ⚡ **Fast inference** on CPU or GPU
+- 🛡️ **Robust fallback system** for stability
 
 No more API keys, no more cloud dependency - everything runs on YOUR machine! 🚀
 
@@ -56,6 +57,12 @@ FLASK_SECRET_KEY=your-secret-key-change-this
 python app.py
 ```
 
+### Option 3: Test Mode (If TinyLlama Fails)
+```bash
+# Run simple test version first
+python test_app.py
+```
+
 ## 🧠 TinyLlama - Your Local AI Brain
 
 ### What is TinyLlama?
@@ -64,6 +71,7 @@ python app.py
 - **No internet required** after initial download
 - **Complete privacy** - your conversations stay local
 - **Fast inference** - especially with GPU acceleration
+- **Fallback mode** - graceful degradation if resources are limited
 
 ### System Requirements
 - **Minimum**: 4GB RAM, any CPU
@@ -73,23 +81,26 @@ python app.py
 
 ## 💬 AI Models Available
 
-### 🟢 Chanuth (Standard)
-- **Personality**: Normally aggressive with human-like attitude
+### 🟢 F-1 (Standard)
+- **Personality**: Normal humanized AI with friendly conversational style
+- **Tone**: Warm, approachable, naturally helpful
 - **Research**: Automatically looks up current info when needed
-- **Best for**: General questions with some attitude
-- **Powered by**: TinyLlama running locally
+- **Best for**: General conversations and friendly assistance
+- **Response Style**: Natural human speech, engaging and conversational
 
-### 🔴 Amu Gawaya (Enhanced)
-- **Personality**: Highly aggressive, uses slang and sarcasm
-- **Research**: Researches stuff online with attitude
-- **Best for**: When you want brutal honesty
-- **Powered by**: TinyLlama with enhanced prompting
+### 🔷 F-1.5 (Enhanced)
+- **Personality**: Professional AI assistant focused on accuracy and efficiency
+- **Tone**: Business-like but approachable, clear and precise
+- **Research**: Methodical research with structured responses
+- **Best for**: Professional tasks, detailed information, work-related queries
+- **Response Style**: Well-structured, professional, thorough
 
-### 🟣 Amu Gawaya Ultra Pro Max (Ultra)
-- **Personality**: Maximum hostility with superior intelligence
-- **Research**: Advanced web research with contemptuous responses
-- **Best for**: Complex questions when you can handle the attitude
-- **Powered by**: TinyLlama with sophisticated prompt engineering
+### 🟣 F-o1 (Ultra High)
+- **Personality**: Research-focused AI with analytical approach
+- **Tone**: Analytical, thorough, academic-like
+- **Research**: Comprehensive investigation with cross-referencing
+- **Best for**: Complex research, analysis, in-depth exploration
+- **Response Style**: Systematic, comprehensive, methodical
 
 ## 🌐 Auto-Research Examples
 
@@ -102,7 +113,7 @@ The AI will automatically research when you ask about:
 
 ### 📈 Financial Information
 - "Apple stock price"
-- "Tesla market performance"
+- "Tesla market performance" 
 - "Tech stocks today"
 
 ### 📰 Current Events
@@ -140,8 +151,9 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ## 📁 Project Structure
 
 ```
-multi-model-ai/
-├── app.py                     # Main TinyLlama application
+sirimath-ai/
+├── app.py                     # Main Sirimath application
+├── test_app.py               # Simple test version
 ├── requirements.txt           # Python dependencies
 ├── setup.py                  # Automated setup script
 ├── health_check.py           # System health checker
@@ -161,6 +173,7 @@ multi-model-ai/
 - **Fast inference** on CPU or GPU
 - **No API keys** required
 - **Works offline** (except for web research)
+- **Fallback mode** for limited-resource systems
 
 ### 🌐 Intelligent Auto-Research
 - **Smart Detection**: Automatically detects when queries need current info
@@ -169,7 +182,7 @@ multi-model-ai/
 - **Cached Results**: Avoids duplicate crawls
 
 ### 🤖 Multiple AI Personalities
-- **Three distinct models** with different aggression levels
+- **Three distinct models** with different approaches
 - **Context-aware responses** using fresh web data
 - **Conversation memory** across chat sessions
 - **Emotion detection** for better responses
@@ -180,10 +193,22 @@ multi-model-ai/
 - **Mobile-responsive design**
 - **Real-time research indicators**
 - **Local embeddings** for semantic search
+- **Robust error handling**
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
+
+#### Segmentation Fault on Startup
+```bash
+# Try the test version first:
+python test_app.py
+
+# If test works, the issue is TinyLlama loading
+# Check available RAM and try:
+export OMP_NUM_THREADS=1
+python app.py
+```
 
 #### "TinyLlama dependencies not available"
 ```bash
@@ -222,6 +247,7 @@ TINYLLAMA_MAX_NEW_TOKENS=128
 3. **Close other applications** to free RAM
 4. **SSD storage** improves model loading speed
 5. **Research takes 2-5 seconds** - be patient for fresh data
+6. **Fallback mode available** if full model won't load
 
 ## 🔧 Advanced Configuration
 
@@ -232,8 +258,8 @@ FLASK_SECRET_KEY=your_secret_key
 
 # TinyLlama settings
 TINYLLAMA_DEVICE=auto                    # auto, cpu, cuda
-TINYLLAMA_MAX_LENGTH=512                 # Input context length
-TINYLLAMA_MAX_NEW_TOKENS=256            # Response length
+TINYLLAMA_MAX_LENGTH=256                 # Input context length (conservative)
+TINYLLAMA_MAX_NEW_TOKENS=128            # Response length (conservative)
 TINYLLAMA_TEMPERATURE=0.7               # Creativity (0.1-1.0)
 
 # Embedding model
@@ -245,33 +271,37 @@ ENABLE_WEB_CRAWLING=true                # Enable/disable research
 
 ### Hardware Optimization
 ```python
-# For systems with limited RAM
+# For systems with limited RAM (4GB)
 TINYLLAMA_MAX_LENGTH=256
 TINYLLAMA_MAX_NEW_TOKENS=128
 
-# For powerful systems
+# For systems with good RAM (8GB+)
+TINYLLAMA_MAX_LENGTH=512
+TINYLLAMA_MAX_NEW_TOKENS=256
+
+# For powerful systems (16GB+)
 TINYLLAMA_MAX_LENGTH=1024
 TINYLLAMA_MAX_NEW_TOKENS=512
 ```
 
 ## 🎉 Usage Examples
 
-### Basic Conversation
+### Friendly Conversation (F-1)
 ```
 You: "Tell me about Apple company"
-Chanuth: "Ugh, fine. Apple's doing their usual thing - they just announced some new iPhone nonsense and their stock is around $180. They're still making ridiculous amounts of money selling overpriced gadgets to people who think they need the latest shiny thing."
+F-1: "Hello! Apple Inc. is a major technology company known for designing and manufacturing consumer electronics like iPhones, iPads, and MacBooks. They're currently one of the world's most valuable companies and are headquartered in Cupertino, California. Would you like me to look up their latest news or stock information?"
 ```
 
-### Financial Query
+### Professional Query (F-1.5)
 ```
-You: "Tesla stock price"
-Amu Gawaya: "tesla's at like $240 or whatever, down from yesterday because musk probably tweeted something stupid again 🙄 why don't you just check your own portfolio app?"
+You: "Tesla stock performance"
+F-1.5: "I'll gather the current Tesla stock information for you. Tesla (TSLA) is currently trading around $240 per share. The stock has experienced volatility this quarter due to various market factors including EV competition and production updates. Would you like a more detailed analysis of their recent performance metrics?"
 ```
 
-### Technical Information
+### Research Analysis (F-o1)
 ```
 You: "Latest AI developments"
-Amu Ultra: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iterations and continued open-source advancement, though I doubt your limited comprehension can appreciate the technical complexities involved."
+F-o1: "Conducting comprehensive analysis of current AI developments... Recent significant advances include improvements in large language models, multimodal AI systems, and AI safety research. Key developments include OpenAI's latest model iterations, Google's Gemini advances, and increased focus on AI alignment research. This represents a continued acceleration in the field with both technical and regulatory implications."
 ```
 
 ## 🔄 Updates & Maintenance
@@ -282,21 +312,36 @@ The system automatically:
 - ✅ Updates knowledge base with fresh data
 - ✅ Maintains conversation context
 - ✅ Stores models locally for offline use
+- ✅ Gracefully handles system limitations
+- ✅ Provides fallback responses when needed
 
 ## 📞 Support
 
 If you encounter issues:
-1. Run the health check: `python health_check.py`
-2. Check the troubleshooting section above
-3. Ensure all dependencies are installed
-4. Verify sufficient RAM/storage available
-5. Check that Playwright browsers are installed
+1. **Try test mode first**: `python test_app.py`
+2. **Run health check**: `python health_check.py`
+3. Check the troubleshooting section above
+4. Ensure all dependencies are installed
+5. Verify sufficient RAM/storage available
+6. Check that Playwright browsers are installed
+
+### Health Check Commands
+```bash
+# Check system compatibility
+python health_check.py
+
+# Test basic functionality
+python test_app.py
+
+# Check model loading
+python -c "import torch; print('PyTorch:', torch.__version__)"
+```
 
 ## 🎊 Enjoy Your LOCAL AI Assistant!
 
-Your AI now runs **completely on your machine** with TinyLlama and will automatically research topics to give you the most current information - all while maintaining their wonderfully aggressive personalities! 
+Sirimath now runs **completely on your machine** with TinyLlama and will automatically research topics to give you the most current information - all with three distinct personalities to match your needs!
 
-Ask about companies, stocks, news, or anything that needs fresh data. The AI will handle the research automatically and respond in character.
+Ask about companies, stocks, news, or anything that needs fresh data. The AI will handle the research automatically and respond according to their personality.
 
 **Key Benefits:**
 - 🔒 **Complete Privacy** - your data never leaves your machine
@@ -304,5 +349,12 @@ Ask about companies, stocks, news, or anything that needs fresh data. The AI wil
 - 🌐 **Current Info** - automatic web research when needed
 - 💰 **No Costs** - no API fees or subscriptions
 - 🚀 **Always Available** - works offline after initial setup
+- 🛡️ **Reliable** - fallback modes ensure it always works
+- 🎭 **Personalized** - choose the AI personality that fits your needs
+
+**Three Personalities for Every Need:**
+- 🟢 **F-1**: Your friendly, conversational companion
+- 🔷 **F-1.5**: Your professional, efficient assistant
+- 🟣 **F-o1**: Your thorough, research-focused analyst
 
 **No API keys needed - just ask and watch the magic happen!** ✨
