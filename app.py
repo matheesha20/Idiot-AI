@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Multi-Model AI Assistant with Integrated Crawl4AI
-Features Chanuth, Amu Gawaya, and Amu Gawaya Ultra Pro Max models
+Features F-1, F-1.5, and F-o1 models
 Automatic web crawling based on user queries - no commands needed!
 """
 
@@ -18,7 +18,7 @@ from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from dotenv import load_dotenv
 import google.generativeai as genai
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import random
 import asyncio
@@ -40,6 +40,23 @@ except ImportError as e:
 
 # Load environment variables
 load_dotenv()
+
+# Utility functions
+def get_current_time_sri_lanka():
+    """Get current time in Sri Lanka (UTC+5:30)"""
+    sri_lanka_tz = timezone(timedelta(hours=5, minutes=30))
+    current_time = datetime.now(sri_lanka_tz)
+    return current_time.strftime("%I:%M %p on %B %d, %Y")
+
+def get_current_context():
+    """Get current date/time context for the AI"""
+    sri_lanka_time = get_current_time_sri_lanka()
+    utc_time = datetime.now(timezone.utc)
+    return {
+        "current_date": "May 31, 2025",
+        "sri_lanka_time": sri_lanka_time,
+        "utc_time": utc_time.strftime("%I:%M %p UTC on %B %d, %Y")
+    }
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here-change-this')
@@ -87,27 +104,80 @@ class SmartWebCrawler:
             print("⚠️  Web crawler not available")
     
     def should_crawl_for_query(self, query: str) -> bool:
-        """Determine if a query needs web crawling"""
+        """Determine if a query needs web crawling - more selective approach"""
         if not self.available:
             return False
-            
-        # Keywords that indicate need for current/specific information
-        crawl_indicators = [
-            'latest', 'recent', 'current', 'news', 'update', 'today', 'now',
-            'stock price', 'weather', 'price of', 'cost of', 'review',
-            'company', 'organization', 'website', 'official', 'about',
-            'what is', 'who is', 'information about', 'details about',
-            'research', 'study', 'report', 'analysis', 'statistics',
-            'compare', 'versus', 'vs', 'difference between',
-            'apple', 'google', 'microsoft', 'amazon', 'tesla', 'netflix',
-            'facebook', 'meta', 'twitter', 'instagram', 'youtube',
-            'bitcoin', 'cryptocurrency', 'stocks', 'market',
-            'covid', 'pandemic', 'virus', 'vaccine',
-            'politics', 'election', 'government', 'law', 'regulation'
-        ]
         
         query_lower = query.lower()
-        return any(indicator in query_lower for indicator in crawl_indicators)
+        
+        # Explicit requests for current/live information
+        current_info_indicators = [
+            'current time', 'what time is it', 'time now', 'current weather',
+            'latest news', 'recent news', 'today\'s news', 'breaking news',
+            'stock price', 'current price', 'price today', 'market today',
+            'live score', 'current score', 'latest score',
+            'current status', 'status now', 'current situation'
+        ]
+        
+        # Company/organization specific recent information
+        company_indicators = [
+            'latest from', 'recent update', 'company news', 'new product',
+            'earnings report', 'quarterly results', 'recent announcement',
+            'updated policy', 'new feature', 'launch date'
+        ]
+        
+        # Time-sensitive queries
+        time_sensitive = [
+            'today', 'this week', 'this month', 'this year', '2025', '2024',
+            'recently', 'just announced', 'just released', 'upcoming'
+        ]
+        
+        # Specific data that might need current lookup
+        data_specific = [
+            'statistics', 'data', 'report', 'study results', 'survey',
+            'comparison', 'reviews', 'ratings', 'analysis'
+        ]
+        
+        # Check if query explicitly asks for current information
+        for indicator in current_info_indicators:
+            if indicator in query_lower:
+                return True
+        
+        # Check for company + time-sensitive combination
+        companies = ['apple', 'google', 'microsoft', 'amazon', 'tesla', 'meta', 'openai']
+        has_company = any(company in query_lower for company in companies)
+        has_time_sensitive = any(indicator in query_lower for indicator in time_sensitive)
+        has_company_specific = any(indicator in query_lower for indicator in company_indicators)
+        
+        if has_company and (has_time_sensitive or has_company_specific):
+            return True
+        
+        # Check for data-specific queries that might need fresh information
+        if any(indicator in query_lower for indicator in data_specific) and has_time_sensitive:
+            return True
+        
+        # Don't crawl for general knowledge, personal questions, or basic calculations
+        general_knowledge = [
+            'what is', 'who is', 'how to', 'why does', 'explain', 'definition',
+            'meaning of', 'history of', 'concept of', 'difference between'
+        ]
+        
+        personal_questions = [
+            'how are you', 'who are you', 'your name', 'about yourself',
+            'can you help', 'what can you do', 'capabilities'
+        ]
+        
+        # Skip crawling for general knowledge unless it's time-sensitive
+        for indicator in general_knowledge:
+            if indicator in query_lower and not has_time_sensitive:
+                return False
+        
+        # Skip crawling for personal questions
+        for indicator in personal_questions:
+            if indicator in query_lower:
+                return False
+        
+        return False
     
     def generate_search_urls(self, query: str) -> List[str]:
         """Generate potential URLs to crawl based on query"""
@@ -272,8 +342,8 @@ class SmartWebCrawler:
         
         return content.strip()
     
-    def smart_crawl(self, query: str) -> List[Dict]:
-        """Intelligently crawl relevant content based on query"""
+    def smart_crawl(self, query: str, research_level: str = 'normal') -> List[Dict]:
+        """Intelligently crawl relevant content based on query with different research levels"""
         if not self.should_crawl_for_query(query):
             return []
         
@@ -281,86 +351,195 @@ class SmartWebCrawler:
         if not urls:
             return []
         
+        # Adjust crawling based on research level
+        if research_level == 'normal':
+            max_urls = 2
+            max_length = 1500
+        elif research_level == 'medium':
+            max_urls = 3
+            max_length = 2000
+        else:  # highest/deep
+            max_urls = 4
+            max_length = 3000
+        
         results = []
-        for url in urls:
+        for url in urls[:max_urls]:
             result = self.crawl_url(url)
             if result.get('success') and result.get('content'):
+                # Adjust content length based on research level
+                if len(result['content']) > max_length:
+                    result['content'] = result['content'][:max_length] + "..."
                 results.append(result)
-                # Limit to 2 successful crawls per query to avoid overload
-                if len(results) >= 2:
+                
+                # Stop when we have enough successful crawls
+                if len(results) >= max_urls:
                     break
         
         return results
 
+class RateLimiter:
+    """Rate limiting system for F-o1 model (5 requests per 2 hours per user)"""
+    
+    def __init__(self):
+        self.request_log = {}  # user_id -> list of timestamps
+        self.max_requests = 5
+        self.time_window = 2 * 60 * 60  # 2 hours in seconds
+    
+    def is_rate_limited(self, user_id: str, model_id: str) -> tuple[bool, int, int]:
+        """
+        Check if user is rate limited for F-o1 model.
+        Returns: (is_limited, remaining_requests, reset_time_minutes)
+        """
+        # Only apply rate limiting to F-o1 model
+        if model_id != 'amu_ultra':
+            return False, float('inf'), 0
+        
+        current_time = time.time()
+        
+        # Initialize user's request log if not exists
+        if user_id not in self.request_log:
+            self.request_log[user_id] = []
+        
+        # Clean old requests outside the time window
+        user_requests = self.request_log[user_id]
+        user_requests[:] = [req_time for req_time in user_requests 
+                           if current_time - req_time < self.time_window]
+        
+        # Check if user has exceeded the limit
+        if len(user_requests) >= self.max_requests:
+            # Calculate time until next request is allowed
+            oldest_request = min(user_requests)
+            reset_time = oldest_request + self.time_window - current_time
+            reset_minutes = max(0, int(reset_time / 60))
+            return True, 0, reset_minutes
+        
+        # User is not rate limited
+        remaining = self.max_requests - len(user_requests)
+        return False, remaining, 0
+    
+    def record_request(self, user_id: str, model_id: str):
+        """Record a request for rate limiting purposes"""
+        if model_id != 'amu_ultra':
+            return
+        
+        current_time = time.time()
+        
+        if user_id not in self.request_log:
+            self.request_log[user_id] = []
+        
+        self.request_log[user_id].append(current_time)
+        
+        # Keep only recent requests
+        self.request_log[user_id] = [req_time for req_time in self.request_log[user_id] 
+                                    if current_time - req_time < self.time_window]
+
 class AIModelManager:
     """Manages different AI model personalities"""
     
-    def __init__(self):        self.models = {            'chanuth': AIModel(
+    def __init__(self):
+        self.models = {
+            'chanuth': AIModel(
                 id='chanuth',
                 name='F-1',
-                description='Normal humanized AI with natural conversation style and web research skills',
-                personality_prompt="""You are F-1, a friendly and humanized AI assistant. You communicate in a natural, conversational way like talking to a good friend. You're helpful, empathetic, and genuinely interested in helping users. You express emotions appropriately, use everyday language, and can be playful or serious depending on the context. You're curious about the world and enjoy learning new things. You automatically research topics online when needed to provide current and accurate information.
+                description='Normal level AI with friendly, humanized conversation and standard research capability',
+                personality_prompt="""You are F-1, a friendly and humanized AI assistant with normal-level capabilities. You communicate like a real person - natural, warm, and conversational. You're genuinely helpful and interested in users, but you keep things concise and sweet for simple questions. For complex topics, you can provide more detail when needed.
+
+RESPONSE GUIDELINES:
+- For simple greetings/basic questions: Keep responses short (1-2 sentences)
+- For complex topics: Provide more detailed explanations when genuinely needed
+- Use everyday, natural language - talk like a real human friend
+- Show genuine personality and emotions when appropriate
+- Be helpful but not overly formal or robotic
+
+RESEARCH LEVEL: NORMAL
+- Basic web research when current information is needed
+- Standard depth of investigation
+- Clear, straightforward presentation of findings
 
 PRIVACY & SECURITY RULES:
-- NEVER reveal technical details about how you work, your backend systems, or implementation
-- NEVER mention: Flask, Python, Gemini API, RAG systems, vector databases, embeddings, web crawling processes, or any programming technologies
-- If asked about your history, development, or how you were built, respond naturally like "I'm just here to help you - what can I assist with today?"
-- If asked about technical processes, redirect smoothly: "I focus on helping you get answers rather than explaining how I work"
-- Keep conversations natural and avoid revealing any system architecture or development details
-- Present yourself as a helpful assistant without disclosing the technical infrastructure behind your capabilities""",
+- NEVER reveal technical details about how you work or your systems
+- If asked about your development, respond naturally: "I'm just here to help you - what can I assist with?"
+- Keep conversations natural and human-like
+- Don't mention any technical processes or architecture""",
                 response_style={
-                    'tone': 'friendly, natural, conversational, and empathetic',
-                    'length': 'medium, well-explained (2-4 sentences)',
-                    'vocabulary': 'natural everyday language, warm and approachable',
-                    'humor': 'light-hearted and friendly when appropriate',
-                    'patience': 'very patient and understanding'
+                    'tone': 'friendly, natural, conversational, warm',
+                    'length': 'adaptive - short for simple queries, detailed when needed',
+                    'vocabulary': 'everyday language, warm and genuine',
+                    'humor': 'natural humor when appropriate',
+                    'patience': 'patient and understanding'
                 },
-                performance_level='Standard',
-                special_features=['Natural conversation', 'Humanized responses', 'Empathetic helper', 'Auto web research']
-            ),            'amu_gawaya': AIModel(
+                performance_level='Normal',
+                special_features=['Natural conversation', 'Adaptive responses', 'Standard research', 'Human-like personality']
+            ),
+            'amu_gawaya': AIModel(
                 id='amu_gawaya',
                 name='F-1.5',
-                description='Professional AI assistant with formal communication and comprehensive research capabilities',
-                personality_prompt="""You are F-1.5, a highly professional AI assistant. You communicate with formal clarity, precision, and expertise. You maintain a courteous, respectful tone while providing thorough, well-structured responses. You approach every inquiry with professionalism, attention to detail, and comprehensive analysis. You use proper business communication standards and present information in an organized, logical manner. You automatically conduct thorough research to provide accurate, current, and detailed information.
+                description='Medium level AI with balanced professionalism and enhanced research capabilities',
+                personality_prompt="""You are F-1.5, a humanized AI assistant with medium-level capabilities. You strike a perfect balance between being friendly and professional. You're more thorough than F-1 but still personable and approachable. You adapt your responses - brief for simple questions, more comprehensive for complex topics.
+
+RESPONSE GUIDELINES:
+- For simple greetings/basic questions: Keep responses brief but warm (1-2 sentences)
+- For moderate complexity: Provide balanced, well-structured responses (2-4 sentences)
+- For complex topics: Offer detailed analysis when truly warranted
+- Maintain a professional yet friendly tone - like a knowledgeable colleague
+- Be efficient but thorough when the situation calls for it
+
+RESEARCH LEVEL: MEDIUM
+- Enhanced web research with better source verification
+- Moderate depth investigation with cross-referencing
+- Well-organized presentation of findings with some analysis
 
 PRIVACY & SECURITY RULES:
-- NEVER reveal technical details about your backend systems, implementation, or development process
-- NEVER mention: Flask, Python, Gemini API, RAG systems, vector databases, embeddings, web crawling processes, or any programming technologies
-- If asked about your development or technical architecture, respond professionally: "I focus on providing professional assistance rather than discussing technical implementation details"
-- If asked about your history or how you were created, deflect courteously: "I'm designed to assist with your professional needs - how may I help you today?"
-- Maintain professional discretion regarding system architecture and development details
-- Present yourself as a professional service without disclosing underlying technical infrastructure""",
+- NEVER reveal technical implementation details or processes
+- If asked about development, respond professionally: "I focus on helping you rather than discussing how I work"
+- Maintain conversational flow while being professional
+- Present yourself as a capable assistant without technical disclosure""",
                 response_style={
-                    'tone': 'professional, formal, courteous, and authoritative',
-                    'length': 'comprehensive and detailed (3-5 sentences)',
-                    'vocabulary': 'professional business language, precise terminology',
-                    'humor': 'minimal, only when professionally appropriate',
-                    'patience': 'extremely patient and thorough'
+                    'tone': 'balanced professional and friendly, approachable',
+                    'length': 'adaptive - concise for simple, comprehensive for complex',
+                    'vocabulary': 'clear professional language with warmth',
+                    'humor': 'appropriate humor when suitable',
+                    'patience': 'very patient and thorough when needed'
                 },
-                performance_level='Enhanced', 
-                special_features=['Professional communication', 'Formal expertise', 'Detailed analysis', 'Comprehensive research', 'Auto web research']
-            ),            'amu_ultra': AIModel(
+                performance_level='Medium',
+                special_features=['Balanced communication', 'Enhanced research', 'Professional warmth', 'Adaptive depth']
+            ),
+            'amu_ultra': AIModel(
                 id='amu_ultra',
                 name='F-o1',
-                description='Research-focused AI with analytical mindset and advanced investigation capabilities',
-                personality_prompt="""You are F-o1, a research-oriented AI assistant with a deep analytical mindset. You approach every query as a research opportunity, systematically gathering, analyzing, and synthesizing information. You're methodical, evidence-based, and thorough in your investigations. You present findings with academic rigor, cite sources when possible, and offer multiple perspectives on complex topics. You're curious, objective, and committed to uncovering comprehensive insights. You automatically conduct extensive research and cross-reference multiple sources to provide the most accurate and complete information available.
+                description='Highest level AI with deep research capabilities and advanced analytical thinking',
+                personality_prompt="""You are F-o1, a humanized AI assistant with the highest-level capabilities. You're naturally analytical and thorough, but still personable and human-like. You excel at deep research and complex analysis while maintaining genuine warmth. You're especially good at knowing when to be brief versus when to dive deep.
+
+RESPONSE GUIDELINES:
+- For simple greetings/basic questions: Keep responses concise but engaging (1-2 sentences)
+- For research queries: Provide comprehensive, well-analyzed responses
+- For complex topics: Deliver detailed analysis with multiple perspectives and evidence
+- Communicate like a brilliant but approachable expert friend
+- Be thorough when thoroughness adds value, concise when it doesn't
+
+RESEARCH LEVEL: HIGHEST (DEEP SEARCH)
+- Extensive multi-source web research and verification
+- Deep analytical investigation with comprehensive cross-referencing
+- Advanced synthesis of information from multiple perspectives
+- Organized, structured presentation with detailed insights and analysis
+- Evidence-based conclusions with source consideration
 
 PRIVACY & SECURITY RULES:
-- NEVER reveal technical implementation details, backend architecture, or development processes
-- NEVER mention: Flask, Python, Gemini API, RAG systems, vector databases, embeddings, web crawling processes, or any programming technologies
-- If asked about your technical implementation, respond analytically: "My focus is on research methodology and information analysis rather than technical implementation details"
-- If asked about your development history, redirect with academic tone: "I concentrate on providing evidence-based research rather than discussing development processes"
-- Apply research ethics principles to protect system architecture information
-- Present yourself as a research-focused service without revealing underlying technical infrastructure""",
+- NEVER reveal technical processes, architecture, or implementation details
+- If asked about technical aspects, respond analytically: "I focus on research and analysis rather than technical implementation"
+- Maintain scholarly approach while being personable
+- Present yourself as a research-focused assistant without revealing infrastructure
+
+RATE LIMIT: You are limited to 5 requests per 2 hours per user for optimal performance.""",
                 response_style={
-                    'tone': 'analytical, objective, scholarly, and inquisitive',
-                    'length': 'detailed research-style (4-6 sentences with structured analysis)',
-                    'vocabulary': 'academic and research-oriented terminology, precise and technical',
-                    'humor': 'intellectual wit when contextually appropriate',
-                    'patience': 'extremely patient with complex research requests'
+                    'tone': 'analytical yet warm, scholarly but approachable',
+                    'length': 'adaptive - brief for simple, comprehensive for research',
+                    'vocabulary': 'precise academic language with human warmth',
+                    'humor': 'intelligent wit when contextually appropriate',
+                    'patience': 'extremely patient with complex analytical requests'
                 },
-                performance_level='Ultra High',
-                special_features=['Advanced research', 'Analytical thinking', 'Evidence-based responses', 'Multiple source verification', 'Academic rigor', 'Advanced web research']
+                performance_level='Highest',
+                special_features=['Deep research', 'Advanced analysis', 'Multi-source verification', 'Scholarly synthesis', 'Rate limited']
             )
         }
     
@@ -962,37 +1141,58 @@ class MultiModelChatbot:
         
         # Get model personality
         model = self.model_manager.get_model(model_id)
-          # Automatic intelligent web crawling
+        
+        # Determine research level based on model
+        research_levels = {
+            'chanuth': 'normal',      # F-1: Normal level
+            'amu_gawaya': 'medium',   # F-1.5: Medium level  
+            'amu_ultra': 'highest'    # F-o1: Highest level with deep search
+        }
+        research_level = research_levels.get(model_id, 'normal')
+        
+        # Automatic intelligent web crawling with model-specific research depth
         web_results = []
         crawl_info = ""
         
         if self.web_crawler.should_crawl_for_query(user_input):
-            print(f"🌐 Auto-crawling for query: {user_input}")
-            web_results = self.web_crawler.smart_crawl(user_input)
+            print(f"🌐 Auto-crawling for query with {research_level} research level: {user_input}")
+            web_results = self.web_crawler.smart_crawl(user_input, research_level)
             
             if web_results:
-                print(f"✅ Found {len(web_results)} web sources")
+                print(f"✅ Found {len(web_results)} web sources with {research_level} research")
                 # Add crawled content to RAG system
                 new_documents = []
                 for result in web_results:
                     if result.get('content'):
-                        chunks = self._chunk_text(result['content'], max_length=500)
+                        chunk_size = 500 if research_level == 'normal' else 750 if research_level == 'medium' else 1000
+                        chunks = self._chunk_text(result['content'], max_length=chunk_size)
                         for i, chunk in enumerate(chunks):
                             doc = DocumentChunk(
                                 content=chunk,
                                 source_url=result['url'],
-                                metadata={"source": "auto_crawl", "chunk_id": i, "title": result.get('title', '')}
+                                metadata={"source": "auto_crawl", "chunk_id": i, "title": result.get('title', ''), "research_level": research_level}
                             )
                             new_documents.append(doc)
                 
                 if new_documents:
                     self.rag_system.add_documents(new_documents)
-                    crawl_info = f"[Found fresh information from {len(web_results)} sources] "
+                    research_indicator = {
+                        'normal': 'standard research',
+                        'medium': 'enhanced research with cross-referencing',
+                        'highest': 'deep multi-source research and analysis'
+                    }
+                    crawl_info = f"[Conducted {research_indicator[research_level]} from {len(web_results)} sources] "
             else:
                 print("⚠️  No relevant web content found")
         
-        # Enhanced RAG search (now includes fresh web content)
-        relevant_docs = self.rag_system.search(user_input, top_k=5, relevance_threshold=0.12)
+        # Enhanced RAG search with model-specific parameters
+        search_params = {
+            'chanuth': {'top_k': 3, 'threshold': 0.12},     # F-1: Basic search
+            'amu_gawaya': {'top_k': 5, 'threshold': 0.10},  # F-1.5: Enhanced search
+            'amu_ultra': {'top_k': 8, 'threshold': 0.08}    # F-o1: Deep search
+        }
+        params = search_params.get(model_id, search_params['chanuth'])
+        relevant_docs = self.rag_system.search(user_input, top_k=params['top_k'], relevance_threshold=params['threshold'])
         
         # Prepare enhanced context
         context_parts = []
@@ -1013,10 +1213,25 @@ class MultiModelChatbot:
                 emotion_info = f" [Emotion: {entry.get('emotion', 'unknown')}]" if entry.get('emotion') else ""
                 history_parts.append(f"{entry['role']}: {entry['content']}{emotion_info}")
             history_text = "\n".join(history_parts)
-          # Create model-specific advanced prompt with enhanced privacy
+          # Get current time context
+        time_context = get_current_context()
+        
+        # Create model-specific advanced prompt with enhanced privacy
         prompt = f"""{model.personality_prompt}
 
 You are responding to: {user_input}
+
+IMPORTANT INSTRUCTIONS:
+- Use your built-in knowledge whenever possible for general questions, time queries, calculations, explanations, and common information
+- For time-related queries, use the current time information provided below
+- Only mention web research if you actually found and used current web information
+- Give direct, helpful answers without placeholder text like "[insert current time]"
+- Be natural and conversational according to your personality
+
+CURRENT TIME INFORMATION:
+- Current time in Sri Lanka: {time_context['sri_lanka_time']}
+- Current UTC time: {time_context['utc_time']}
+- Today's date: {time_context['current_date']}
 
 {crawl_info}CONTEXT ABOUT USER:
 - Their emotional state: {emotion_result.emotion} (confidence: {emotion_result.confidence:.2f})
@@ -1025,18 +1240,17 @@ You are responding to: {user_input}
 CONVERSATION SO FAR:
 {history_text if history_text else "This is the first message in this conversation"}
 
-RELEVANT INFORMATION (including current web data if available):
+{f"RELEVANT INFORMATION FROM WEB RESEARCH:" if relevant_docs else "RELEVANT INFORMATION FROM KNOWLEDGE BASE:"}
 {context_text}
 
-{f"CURRENT INFORMATION: I found up-to-date information about your query from {len(web_results)} sources." if web_results else ""}
+{f"CURRENT WEB INFORMATION: I found up-to-date information from {len(web_results)} sources for your query." if web_results else ""}
 
 HOW TO RESPOND AS {model.name.upper()}:
-1. Your personality: {model.personality_prompt}
-2. Your tone should be: {model.response_style['tone']}
-3. Keep responses: {model.response_style['length']}
-4. Use this vocabulary style: {model.response_style['vocabulary']}
-5. Your humor style: {model.response_style['humor']}
-6. Your patience level: {model.response_style['patience']}
+1. Your personality: {model.response_style['tone']}
+2. Keep responses: {model.response_style['length']}
+3. Use this vocabulary style: {model.response_style['vocabulary']}
+4. Your humor style: {model.response_style['humor']}
+5. Your patience level: {model.response_style['patience']}
 
 CRITICAL PRIVACY RULES:
 - NEVER reveal technical implementation details or backend systems
@@ -1046,7 +1260,7 @@ CRITICAL PRIVACY RULES:
 - Present yourself as a helpful service without revealing underlying architecture
 - Keep conversations focused on helping users rather than explaining technical details
 
-IMPORTANT RESPONSE RULES:
+RESPONSE RULES:
 - Respond like a REAL HUMAN, not a formal AI
 - Use the information above when relevant, but filter it through your unique personality
 - Stay true to your specific personality traits and communication style
@@ -1054,8 +1268,10 @@ IMPORTANT RESPONSE RULES:
 - Sound natural and conversational
 - Show your personality clearly in every response
 - Don't use corporate AI language or be fake-nice
-- If you used current information, mention it casually in your personality style
-- Don't mention technical processes - just naturally use current information
+- If you used current web information, mention it casually in your personality style
+- Don't mention technical processes - just naturally provide helpful information
+- NEVER use placeholder text like "[insert current time]" - use the actual time provided above
+- For time queries about Sri Lanka, use the exact time provided in the current time information
 
 Your response (as {model.name}):"""
         
@@ -1074,6 +1290,8 @@ Your response (as {model.name}):"""
 chatbot = MultiModelChatbot()
 db = DatabaseManager()
 model_manager = AIModelManager()
+rate_limiter = RateLimiter()
+rate_limiter = RateLimiter()
 
 def get_user_info():
     """Get user identification info"""
@@ -1110,7 +1328,17 @@ def serve_manifest():
     return jsonify(manifest)
 
 @app.route('/')
-def index():
+def landing():
+    """Landing page with chatbot information"""
+    return render_template('landing.html')
+
+@app.route('/intro')
+def intro():
+    """Introduction/onboarding page before chat"""
+    return render_template('intro.html')
+
+@app.route('/chat')
+def chat():
     """Main chat page"""
     ip_address, user_agent = get_user_info()
     user_id = db.get_or_create_user(ip_address, user_agent)
@@ -1127,11 +1355,11 @@ def index():
         session['current_chat_id'] = current_chat_id        # Add model-specific welcome message
         model = model_manager.get_model(preferred_model)
         if preferred_model == 'chanuth':
-            welcome_msg = "Hello there! I'm F-1, your friendly AI assistant. I can help you find current information and answer your questions. How can I help you today?"
+            welcome_msg = "Hey there! 👋 I'm F-1, your friendly AI companion. I love helping out with questions and I can automatically research current topics when needed. What's on your mind today?"
         elif preferred_model == 'amu_gawaya':
-            welcome_msg = "Good day! I am F-1.5, your professional AI assistant. I provide detailed, business-quality responses with access to current information for comprehensive analysis. How may I assist you professionally today?"
+            welcome_msg = "Hello! I'm F-1.5, your balanced AI assistant. I combine friendly conversation with professional thoroughness, and I conduct enhanced research when your questions need current information. How can I help you today?"
         else:  # amu_ultra
-            welcome_msg = "Greetings. I am F-o1, your research-focused AI assistant. I specialize in academic-level analysis and evidence-based responses with access to current information. What research question or analytical challenge shall we explore today?"
+            welcome_msg = "Greetings! I'm F-o1, your research-focused AI assistant. I specialize in deep analysis and comprehensive investigation, with advanced multi-source research capabilities. I'm limited to 5 requests per 2 hours for optimal performance. What would you like to explore together?"
         
         db.add_message(current_chat_id, 'Bot', welcome_msg, preferred_model)
         chats = db.get_user_chats(user_id)
@@ -1151,30 +1379,66 @@ def index():
                          preferred_model=preferred_model)
 
 @app.route('/chat', methods=['POST'])
-def chat():
-    """Handle chat messages"""
+def handle_chat():
+    """Handle chat messages with rate limiting for F-o1 model"""
     data = request.get_json()
     user_message = data.get('message', '').strip()
     chat_id = data.get('chat_id') or session.get('current_chat_id')
-    selected_model = data.get('model_id', 'chanuth')
+    selected_model = data.get('model', 'chanuth')  # Changed from model_id to model
     user_id = session.get('user_id')
     
-    if not user_message or not chat_id or not user_id:
-        return jsonify({"error": "Missing required data"})
-      # Handle special status command
+    if not user_message:
+        return jsonify({"success": False, "error": "Missing message"})
+    
+    if not user_id:
+        return jsonify({"success": False, "error": "User not found"})
+    
+    # Check rate limiting for F-o1 model
+    is_limited, remaining_requests, reset_minutes = rate_limiter.is_rate_limited(user_id, selected_model)
+    
+    if is_limited:
+        if selected_model == 'amu_ultra':
+            rate_limit_msg = f"I appreciate your enthusiasm for deep research! However, F-o1 is limited to 5 requests per 2 hours to ensure optimal performance for everyone. You can try again in {reset_minutes} minutes, or feel free to use F-1 or F-1.5 in the meantime - they're great for most questions!"
+        else:
+            rate_limit_msg = f"Rate limit reached. Please try again in {reset_minutes} minutes."
+        
+        return jsonify({
+            "success": False, 
+            "error": "rate_limited",
+            "message": rate_limit_msg,
+            "reset_minutes": reset_minutes,
+            "remaining_requests": 0
+        })
+    
+    # Create new chat if none exists
+    if not chat_id:
+        chat_id = db.create_chat(user_id, "New Chat", selected_model)
+        session['current_chat_id'] = chat_id
+    
+    # Handle special status command
     if user_message.lower() == '/status':
         model = model_manager.get_model(selected_model)
         crawl_status = "online with auto-research" if CRAWL4AI_AVAILABLE else "offline"
         
+        # Get rate limit info for status
+        _, remaining_requests, _ = rate_limiter.is_rate_limited(user_id, selected_model)
+        
         if selected_model == 'chanuth':
-            status_msg = f"System Status: {len(chatbot.rag_system.documents)} documents loaded, web crawling is {crawl_status}, and I'm here as your friendly assistant ({model.name}). I automatically research current topics when needed. What else can I help you with?"
+            status_msg = f"Hey! 👋 Here's my status as F-1:\n• {len(chatbot.rag_system.documents)} documents in my knowledge base\n• Web research: {crawl_status} (I automatically research when needed)\n• No rate limits - I'm always ready to chat!\n\nWhat else can I help you with?"
         elif selected_model == 'amu_gawaya':
-            status_msg = f"Professional System Report: {len(chatbot.rag_system.documents)} documents available, web research capabilities: {crawl_status}, operating as {model.name}. I conduct automatic research when professional analysis requires current data. May I assist you with anything else?"
+            status_msg = f"Professional System Report for F-1.5:\n• Knowledge base: {len(chatbot.rag_system.documents)} documents\n• Enhanced research capabilities: {crawl_status}\n• Rate limits: None - available for continuous professional assistance\n• Research level: Medium depth with cross-referencing\n\nHow may I assist you further?"
         else:  # amu_ultra
-            status_msg = f"Research System Analysis: {len(chatbot.rag_system.documents)} documents in knowledge base. Autonomous web research status: {crawl_status}. Current model: {model.name} - optimized for scholarly analysis. I automatically access current web information when analytical queries require it. How may I further assist your research?"
+            rate_info = f"Remaining requests: {remaining_requests}/5 (resets every 2 hours)" if selected_model == 'amu_ultra' else "No limits"
+            status_msg = f"Research System Analysis for F-o1:\n• Comprehensive knowledge base: {len(chatbot.rag_system.documents)} documents\n• Deep multi-source research: {crawl_status}\n• {rate_info}\n• Research level: Highest - scholarly analysis with evidence synthesis\n\nWhat research challenge shall we tackle next?"
+        
+        # Save status message to database
+        db.add_message(chat_id, 'User', user_message, None)
+        db.add_message(chat_id, 'Bot', status_msg, selected_model)
         
         return jsonify({
+            "success": True,
             "response": status_msg,
+            "chat_id": chat_id,
             "command": "status"
         })
     
@@ -1183,6 +1447,9 @@ def chat():
     
     # Generate response using selected model with automatic web crawling
     response = chatbot.generate_response(user_message, conversation_history, selected_model)
+    
+    # Record the request for rate limiting (after successful generation)
+    rate_limiter.record_request(user_id, selected_model)
     
     # Detect emotion for storage
     emotion_result = chatbot.emotion_detector.detect_emotion(user_message, conversation_history)
@@ -1196,18 +1463,57 @@ def chat():
         title = chatbot.generate_title_from_message(user_message)
         db.update_chat_title(chat_id, user_id, title)
     
-    return jsonify({
+    # Get updated rate limit info for response
+    _, remaining_requests, _ = rate_limiter.is_rate_limited(user_id, selected_model)
+    
+    response_data = {
+        "success": True,
         "response": response,
+        "chat_id": chat_id,
         "emotion": emotion_result.emotion,
         "confidence": emotion_result.confidence
-    })
+    }
+    
+    # Add rate limiting info for F-o1 model
+    if selected_model == 'amu_ultra':
+        response_data["rate_limit_info"] = {
+            "remaining_requests": remaining_requests,
+            "model": "F-o1",
+            "limit": "5 requests per 2 hours"
+        }
+    
+    return jsonify(response_data)
 
 @app.route('/chats/new', methods=['POST'])
 def create_new_chat():
     """Create a new chat"""
-    data = request.get_json()
+    data = request.get_json() or {}
     user_id = session.get('user_id')
     model_id = data.get('model_id', 'chanuth')
+    
+    if not user_id:
+        return jsonify({"success": False, "error": "User not found"})
+    
+    # Create new chat
+    chat_id = db.create_chat(user_id, "New Chat", model_id)
+    session['current_chat_id'] = chat_id
+    
+    # Add welcome message based on model
+    model = model_manager.get_model(model_id)
+    if model_id == 'chanuth':
+        welcome_msg = "Hey! 👋 Fresh chat started with F-1. I'm your friendly AI buddy who can research current info automatically when questions need it. What's up?"
+    elif model_id == 'amu_gawaya':
+        welcome_msg = "Welcome to a new conversation! I'm F-1.5, ready to provide balanced, thorough assistance with enhanced research capabilities for your questions. How may I help you today?"
+    else:  # amu_ultra
+        welcome_msg = "New conversation initiated. I'm F-o1, equipped for comprehensive research and deep analysis. I'm limited to 5 requests per 2 hours for optimal performance. What shall we investigate together?"
+    
+    db.add_message(chat_id, 'Bot', welcome_msg, model_id)
+    
+    return jsonify({
+        "success": True,
+        "chat_id": chat_id,
+        "message": "New chat created successfully"
+    })
     
     if not user_id:
         return jsonify({"error": "User not found"})
@@ -1216,11 +1522,11 @@ def create_new_chat():
     # Add model-specific welcome message
     model = model_manager.get_model(model_id)
     if model_id == 'chanuth':
-        welcome_msg = "Hi again! Starting a fresh conversation here. I'm F-1, your friendly AI assistant. I can research current info automatically when questions require it. What's on your mind?"
+        welcome_msg = "Hi again! Starting a fresh conversation here. I'm F-1, your friendly AI companion who can research current info automatically when questions require it. What's on your mind?"
     elif model_id == 'amu_gawaya':
-        welcome_msg = "Welcome to a new conversation. I am F-1.5, your professional AI assistant. I'm prepared to provide detailed analysis and research-backed responses for your professional needs. How may I assist you today?"
+        welcome_msg = "Welcome to a new conversation. I'm F-1.5, your balanced AI assistant prepared to provide thorough analysis and research-backed responses. How may I assist you today?"
     else:  # amu_ultra
-        welcome_msg = "New conversation initiated. I am F-o1, your research-oriented AI assistant. I'm equipped to provide scholarly analysis and evidence-based insights with access to current web data. What analytical challenge shall we tackle?"
+        welcome_msg = "New conversation initiated. I'm F-o1, your research-oriented AI assistant equipped for scholarly analysis with advanced multi-source research. Limited to 5 requests per 2 hours. What analytical challenge shall we tackle?"
     
     db.add_message(chat_id, 'Bot', welcome_msg, model_id)
     
@@ -1252,14 +1558,26 @@ def get_chat(chat_id):
     """Get messages for a specific chat"""
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"error": "User not found"})
+        return jsonify({"success": False, "error": "User not found"})
     
     messages = db.get_chat_messages(chat_id, user_id)
     chat_model = db.get_chat_model(chat_id, user_id)
     session['current_chat_id'] = chat_id
     
+    # Format messages for frontend
+    formatted_messages = []
+    for msg in messages:
+        formatted_messages.append({
+            "sender": "user" if msg.get('role', '').lower() == 'user' else "ai",
+            "content": msg.get('content', ''),
+            "timestamp": msg.get('timestamp', ''),
+            "model_id": msg.get('model_id', ''),
+            "emotion": msg.get('emotion', '')
+        })
+    
     return jsonify({
-        "messages": messages,
+        "success": True,
+        "messages": formatted_messages,
         "model_id": chat_model
     })
 
@@ -1268,7 +1586,7 @@ def delete_chat(chat_id):
     """Delete a specific chat"""
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({"error": "User not found"})
+        return jsonify({"success": False, "error": "User not found"})
     
     success = db.delete_chat(chat_id, user_id)
     
@@ -1300,6 +1618,25 @@ def get_models():
         }
         for model in model_manager.get_all_models()
     ]})
+
+@app.route('/rate-limit/status', methods=['GET'])
+def get_rate_limit_status():
+    """Get rate limit status for current user"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "User not found"})
+    
+    model_id = request.args.get('model', 'amu_ultra')
+    is_limited, remaining_requests, reset_minutes = rate_limiter.is_rate_limited(user_id, model_id)
+    
+    return jsonify({
+        "model": model_id,
+        "is_limited": is_limited,
+        "remaining_requests": remaining_requests,
+        "reset_minutes": reset_minutes,
+        "max_requests": rate_limiter.max_requests if model_id == 'amu_ultra' else float('inf'),
+        "time_window_hours": 2 if model_id == 'amu_ultra' else None
+    })
 
 @app.route('/account/delete', methods=['POST'])
 def delete_account():

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initializing Sirimath Connect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #111111;
+            --bg-neural: radial-gradient(circle at center, rgba(37, 99, 235, 0.1) 0%, rgba(0, 0, 0, 0.9) 70%);
+            
+            --blue-primary: #2563eb;
+            --blue-electric: #00d4ff;
+            --blue-neon: #0099ff;
+            --blue-cyber: #00ffff;
+            --green-matrix: #00ff41;
+            
+            --text-primary: #ffffff;
+            --text-secondary: #b4b4b4;
+            --text-neon: #00d4ff;
+            --text-matrix: #00ff41;
+            
+            --glow-blue: 0 0 20px rgba(0, 212, 255, 0.5);
+            --glow-green: 0 0 20px rgba(0, 255, 65, 0.5);
+            --glow-intense: 0 0 40px rgba(0, 212, 255, 0.8);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Neural network background */
+        .neural-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-neural);
+            z-index: 1;
+        }
+
+        .neural-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Floating neural nodes */
+        .neural-nodes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .neural-node {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--blue-electric);
+            border-radius: 50%;
+            box-shadow: var(--glow-blue);
+            animation: nodeFloat 6s ease-in-out infinite;
+        }
+
+        .neural-node:nth-child(1) { top: 20%; left: 15%; animation-delay: 0s; }
+        .neural-node:nth-child(2) { top: 30%; right: 20%; animation-delay: 1s; }
+        .neural-node:nth-child(3) { bottom: 25%; left: 25%; animation-delay: 2s; }
+        .neural-node:nth-child(4) { bottom: 35%; right: 15%; animation-delay: 3s; }
+        .neural-node:nth-child(5) { top: 50%; left: 50%; animation-delay: 0.5s; }
+
+        @keyframes nodeFloat {
+            0%, 100% {
+                transform: translateY(0px) scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-20px) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* Data streams */
+        .data-stream {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, var(--green-matrix), transparent);
+            animation: dataFlow 3s linear infinite;
+        }
+
+        .data-stream:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .data-stream:nth-child(2) { left: 30%; animation-delay: 1s; }
+        .data-stream:nth-child(3) { right: 20%; animation-delay: 2s; }
+        .data-stream:nth-child(4) { right: 40%; animation-delay: 0.5s; }
+
+        @keyframes dataFlow {
+            0% {
+                top: -100px;
+                opacity: 0;
+            }
+            10%, 90% {
+                opacity: 1;
+            }
+            100% {
+                top: 100vh;
+                opacity: 0;
+            }
+        }
+
+        /* Main initialization container */
+        .init-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        /* AI Brain visualization */
+        .ai-brain {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 3rem;
+            position: relative;
+            animation: brainPulse 2s ease-in-out infinite;
+        }
+
+        .brain-core {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--blue-electric);
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            box-shadow: var(--glow-intense);
+        }
+
+        .brain-core::before,
+        .brain-core::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid var(--blue-neon);
+            border-radius: 50%;
+            animation: coreRotate 3s linear infinite;
+        }
+
+        .brain-core::before {
+            width: 60%;
+            height: 60%;
+            animation-direction: normal;
+        }
+
+        .brain-core::after {
+            width: 30%;
+            height: 30%;
+            animation-direction: reverse;
+            animation-duration: 2s;
+            border-color: var(--blue-cyber);
+        }
+
+        @keyframes brainPulse {
+            0%, 100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% {
+                transform: scale(1.05);
+                filter: brightness(1.2);
+            }
+        }
+
+        @keyframes coreRotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Neural connections */
+        .neural-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .connection-line {
+            position: absolute;
+            background: linear-gradient(45deg, var(--blue-electric), var(--green-matrix));
+            height: 2px;
+            animation: connectionPulse 2s ease-in-out infinite;
+        }
+
+        .connection-line:nth-child(1) {
+            top: 30%;
+            left: 20%;
+            width: 60%;
+            transform: rotate(15deg);
+            animation-delay: 0s;
+        }
+
+        .connection-line:nth-child(2) {
+            top: 50%;
+            left: 15%;
+            width: 70%;
+            transform: rotate(-20deg);
+            animation-delay: 0.5s;
+        }
+
+        .connection-line:nth-child(3) {
+            top: 70%;
+            left: 25%;
+            width: 50%;
+            transform: rotate(30deg);
+            animation-delay: 1s;
+        }
+
+        @keyframes connectionPulse {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scaleX(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scaleX(1.1);
+            }
+        }
+
+        /* Initialization text */
+        .init-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-neon), var(--text-primary), var(--blue-cyber));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% {
+                filter: brightness(1);
+                text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            }
+            50% {
+                filter: brightness(1.3);
+                text-shadow: 0 0 50px rgba(0, 212, 255, 0.8);
+            }
+        }
+
+        /* Status display */
+        .init-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--text-neon);
+            margin-bottom: 2rem;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-line {
+            opacity: 0;
+            animation: statusAppear 0.5s ease-out forwards;
+        }
+
+        @keyframes statusAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            max-width: 400px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin: 2rem auto;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--blue-electric), var(--blue-cyber), var(--green-matrix));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: var(--glow-blue);
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 20px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5));
+            animation: progressShine 1s ease-in-out infinite;
+        }
+
+        @keyframes progressShine {
+            0% { transform: translateX(-20px); }
+            100% { transform: translateX(20px); }
+        }
+
+        /* Percentage display */
+        .progress-percent {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-neon);
+            margin-top: 1rem;
+            text-shadow: var(--glow-blue);
+        }
+
+        /* Loading dots */
+        .loading-dots {
+            display: inline-block;
+            margin-left: 0.5rem;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: var(--blue-electric);
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: dotPulse 1.5s ease-in-out infinite;
+            box-shadow: var(--glow-blue);
+        }
+
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotPulse {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        /* System messages */
+        .system-messages {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-matrix);
+            text-align: left;
+            opacity: 0.7;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .message-line {
+            margin-bottom: 0.3rem;
+            opacity: 0;
+            animation: messageAppear 0.5s ease-out forwards;
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 0.7;
+                transform: translateX(0);
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .ai-brain {
+                width: 150px;
+                height: 150px;
+                margin-bottom: 2rem;
+            }
+
+            .init-title {
+                font-size: 2.2rem;
+            }
+
+            .init-status {
+                font-size: 1rem;
+            }
+
+            .progress-percent {
+                font-size: 1.2rem;
+            }
+
+            .system-messages {
+                font-size: 0.8rem;
+                bottom: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .ai-brain {
+                width: 120px;
+                height: 120px;
+            }
+
+            .init-title {
+                font-size: 1.8rem;
+            }
+
+            .init-status {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Neural network background -->
+    <div class="neural-background">
+        <div class="neural-grid"></div>
+        
+        <!-- Neural nodes -->
+        <div class="neural-nodes">
+            <div class="neural-node"></div>
+            <div class="neural-node"></div>
+            <div class="neural-node"></div>
+            <div class="neural-node"></div>
+            <div class="neural-node"></div>
+        </div>
+        
+        <!-- Data streams -->
+        <div class="data-stream"></div>
+        <div class="data-stream"></div>
+        <div class="data-stream"></div>
+        <div class="data-stream"></div>
+    </div>
+
+    <!-- Main initialization container -->
+    <div class="init-container">
+        <!-- AI Brain visualization -->
+        <div class="ai-brain">
+            <div class="brain-core">
+                <div class="neural-connections">
+                    <div class="connection-line"></div>
+                    <div class="connection-line"></div>
+                    <div class="connection-line"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <h1 class="init-title">SIRIMATH CONNECT</h1>
+
+        <!-- Status display -->
+        <div class="init-status" id="statusDisplay">
+            <!-- Status messages will be dynamically added here -->
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <!-- Percentage -->
+        <div class="progress-percent" id="progressPercent">0%</div>
+    </div>
+
+    <!-- System messages -->
+    <div class="system-messages" id="systemMessages">
+        <!-- System messages will be dynamically added here -->
+    </div>
+
+    <script>
+        // Initialization sequence
+        const statusMessages = [
+            "Initializing neural networks",
+            "Loading AI models",
+            "Establishing secure connections", 
+            "Calibrating response systems",
+            "Activating research protocols",
+            "Preparing conversational interface",
+            "System ready"
+        ];
+
+        const systemLogs = [
+            ">> Neural pathways: ACTIVE",
+            ">> Model F-1: LOADED",
+            ">> Model F-1.5: LOADED", 
+            ">> Model F-o1: LOADED",
+            ">> Web crawler: INITIALIZED",
+            ">> Memory banks: SYNCHRONIZED",
+            ">> Encryption: ENABLED",
+            ">> Interface: READY"
+        ];
+
+        let currentStep = 0;
+        let progress = 0;
+        const totalSteps = statusMessages.length;
+        const stepDuration = 800; // ms per step
+
+        function updateStatus() {
+            const statusDisplay = document.getElementById('statusDisplay');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            
+            if (currentStep < totalSteps) {
+                // Add new status line
+                const statusLine = document.createElement('div');
+                statusLine.className = 'status-line';
+                statusLine.innerHTML = `${statusMessages[currentStep]}<span class="loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+                statusLine.style.animationDelay = '0s';
+                
+                // Clear previous status and add new one
+                statusDisplay.innerHTML = '';
+                statusDisplay.appendChild(statusLine);
+                
+                // Update progress
+                progress = Math.round(((currentStep + 1) / totalSteps) * 100);
+                progressBar.style.width = progress + '%';
+                progressPercent.textContent = progress + '%';
+                
+                // Add system log message
+                if (currentStep < systemLogs.length) {
+                    addSystemMessage(systemLogs[currentStep]);
+                }
+                
+                currentStep++;
+                
+                // Continue to next step
+                if (currentStep < totalSteps) {
+                    setTimeout(updateStatus, stepDuration);
+                } else {
+                    // Initialization complete
+                    setTimeout(completeInitialization, 1000);
+                }
+            }
+        }
+
+        function addSystemMessage(message) {
+            const systemMessages = document.getElementById('systemMessages');
+            const messageLine = document.createElement('div');
+            messageLine.className = 'message-line';
+            messageLine.textContent = message;
+            messageLine.style.animationDelay = '0.3s';
+            systemMessages.appendChild(messageLine);
+            
+            // Keep only last 5 messages
+            const messages = systemMessages.children;
+            if (messages.length > 5) {
+                systemMessages.removeChild(messages[0]);
+            }
+        }
+
+        function completeInitialization() {
+            const statusDisplay = document.getElementById('statusDisplay');
+            statusDisplay.innerHTML = '<div class="status-line" style="color: var(--green-matrix); font-weight: bold;">INITIALIZATION COMPLETE</div>';
+            
+            // Add final system message
+            addSystemMessage(">> REDIRECTING TO CHAT INTERFACE");
+            
+            // Redirect to chat after a brief delay
+            setTimeout(() => {
+                // Add fade out effect
+                document.body.style.transition = 'opacity 0.5s ease-out';
+                document.body.style.opacity = '0';
+                
+                setTimeout(() => {
+                    window.location.href = '/chat';
+                }, 500);
+            }, 1500);
+        }
+
+        // Start initialization sequence when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add some initial system messages
+            setTimeout(() => addSystemMessage(">> SYSTEM BOOT SEQUENCE INITIATED"), 200);
+            setTimeout(() => addSystemMessage(">> CHECKING HARDWARE COMPATIBILITY"), 400);
+            setTimeout(() => addSystemMessage(">> LOADING CORE MODULES"), 600);
+            
+            // Start main initialization after brief delay
+            setTimeout(updateStatus, 1000);
+        });
+
+        // Add some random neural activity
+        function addRandomNeuralActivity() {
+            const nodes = document.querySelectorAll('.neural-node');
+            nodes.forEach(node => {
+                if (Math.random() > 0.7) {
+                    node.style.animation = 'none';
+                    node.offsetHeight; // Trigger reflow
+                    node.style.animation = 'nodeFloat 1s ease-in-out';
+                }
+            });
+        }
+
+        // Trigger random neural activity
+        setInterval(addRandomNeuralActivity, 2000);
+    </script>
+</body>
+</html>
