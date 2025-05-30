@@ -103,20 +103,29 @@ python app.py
 
 ## 💬 AI Models Available
 
-### 🟢 Chanuth (Standard)
-- **Personality**: Friendly humanized AI with natural conversation style
-- **Research**: Automatically looks up current info when needed
-- **Best for**: Natural, warm conversations and everyday questions
+### 🟢 F-1 (Standard)
+- **Personality**: Friendly and humanized AI assistant with natural conversation style like talking to a good friend
+- **Communication**: Natural, conversational, empathetic, and genuinely helpful with appropriate emotions
+- **Research**: Automatically researches topics online when needed to provide current and accurate information
+- **Response Style**: Medium length (2-4 sentences), warm and approachable everyday language
+- **Special Features**: Natural conversation, humanized responses, empathetic helper, auto web research
+- **Best for**: Natural, warm conversations, everyday questions, and friendly assistance
 
-### 🔴 Amu Gawaya (Enhanced)  
-- **Personality**: Professional AI assistant with formal expertise
-- **Research**: Conducts thorough professional research with detailed analysis
-- **Best for**: Business communications and professional inquiries
+### 🔴 F-1.5 (Enhanced)  
+- **Personality**: Highly professional AI assistant with formal clarity, precision, and expertise
+- **Communication**: Courteous, respectful, thorough, and well-structured with business communication standards
+- **Research**: Conducts comprehensive professional research with detailed analysis and organized information
+- **Response Style**: Comprehensive and detailed (3-5 sentences), professional business language and precise terminology
+- **Special Features**: Professional communication, formal expertise, detailed analysis, comprehensive research, auto web research
+- **Best for**: Business communications, professional inquiries, and formal assistance
 
-### 🟣 Amu Gawaya Ultra Pro Max (Ultra)
-- **Personality**: Research-focused AI with analytical mindset
-- **Research**: Advanced academic research with evidence-based responses
-- **Best for**: Complex research questions and scholarly analysis
+### 🟣 F-o1 (Ultra High)
+- **Personality**: Research-oriented AI with deep analytical mindset approaching every query as a research opportunity
+- **Communication**: Methodical, evidence-based, thorough with academic rigor and objective analysis
+- **Research**: Advanced academic research with evidence-based responses, multiple source verification, and systematic investigation
+- **Response Style**: Detailed research-style (4-6 sentences with structured analysis), academic and research-oriented terminology
+- **Special Features**: Advanced research, analytical thinking, evidence-based responses, multiple source verification, academic rigor, advanced web research
+- **Best for**: Complex research questions, scholarly analysis, and comprehensive investigation
 
 ## 🌐 Auto-Research Examples
 
