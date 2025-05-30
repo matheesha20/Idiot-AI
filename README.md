@@ -11,28 +11,67 @@ Your AI assistant now **automatically researches topics online** without needing
 
 No more `/crawl` commands needed - it's all automatic! 🚀
 
-## 🚀 Quick Setup (Automated)
+## 🚀 Quick Setup (Platform-Specific Scripts)
 
-### Option 1: Automated Setup (Recommended)
+### 🍎 macOS Setup
+```bash
+# Make the script executable and run it
+chmod +x setup_mac.sh
+./setup_mac.sh
+```
 
-1. **Download all files** to a new folder
-2. **Run the setup script**:
+### 🪟 Windows Setup
+```cmd
+# Double-click or run from Command Prompt/PowerShell
+setup_windows.bat
+```
+
+### 🐧 Linux Setup
+```bash
+# Make the script executable and run it
+chmod +x setup_linux.sh
+./setup_linux.sh
+```
+
+### What the Setup Scripts Do:
+- 🔧 **Install system dependencies** (Python 3.8+, development tools)
+- 📦 **Create isolated virtual environment**
+- 🎭 **Install Playwright browsers** for web crawling
+- ⚙️ **Configure environment** with secure defaults
+- 🚀 **Create start/stop/restart scripts**
+- ✅ **Run health checks** to verify installation
+
+### After Setup:
+1. **Edit `.env` file** - Add your Gemini API key
+2. **Start the application**:
    ```bash
-   python setup.py
+   ./start.sh      # macOS/Linux
+   start.bat       # Windows
    ```
-3. **Follow the prompts** (you'll need a Gemini API key)
-4. **Start the assistant**:
-   ```bash
-   ./start.sh    # Linux/Mac
-   start.bat     # Windows
-   ```
+3. **Open your browser** to `http://localhost:5000`
+
+---
+
+## 📋 Alternative Setup Methods
+
+### Option 1: Legacy Python Setup (Cross-platform)
+If you prefer the original setup method:
+```bash
+python setup.py
+```
 
 ### Option 2: Manual Setup
-
-If you prefer to set up manually:
+For advanced users who want full control:
 
 #### Step 1: Install Python Requirements
 ```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# OR
+venv\Scripts\activate.bat  # Windows
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -44,9 +83,11 @@ python -m playwright install-deps
 
 #### Step 3: Create Environment File
 Create a `.env` file with:
-```
+```env
 GEMINI_API_KEY=your_gemini_api_key_here
 FLASK_SECRET_KEY=your-secret-key-change-this
+FLASK_ENV=development
+FLASK_DEBUG=True
 ```
 
 #### Step 4: Run the Application
@@ -103,24 +144,49 @@ The AI will automatically research when you ask about:
 
 ## 🛠️ System Requirements
 
-- **Python 3.8+**
-- **4GB+ RAM** (for web crawling)
-- **Internet connection** (for research)
-- **Modern browser** (Chrome/Firefox/Safari)
+### Minimum Requirements:
+- **Python 3.8+** (automatically installed by setup scripts)
+- **2GB+ RAM** (4GB+ recommended for web crawling)
+- **500MB+ disk space** (for dependencies and browsers)
+- **Internet connection** (for AI API and research)
+
+### Supported Platforms:
+- 🍎 **macOS** 10.14+ (Intel & Apple Silicon)
+- 🪟 **Windows** 10/11 (64-bit)
+- 🐧 **Linux** (Ubuntu 18.04+, Debian 10+, Fedora 30+, Arch, openSUSE)
+
+### Automatic Dependencies:
+The setup scripts automatically install:
+- Python 3.8+ and pip
+- Virtual environment tools
+- System libraries for Playwright
+- Development tools and compilers
+- Node.js (for some dependencies)
 
 ## 📁 Project Structure
 
 ```
 sirimath-connect/
-├── app.py                 # Main application with auto-research
-├── requirements.txt       # Python dependencies
-├── setup.py              # Automated setup script
+├── app.py                    # Main application with auto-research
+├── requirements.txt          # Python dependencies
+├── setup_mac.sh             # macOS automated setup script
+├── setup_windows.bat        # Windows automated setup script
+├── setup_linux.sh           # Linux automated setup script
+├── setup.py                 # Legacy cross-platform setup
+├── health_check.py          # System health verification
 ├── templates/
-│   └── multi_model_chat.html  # Enhanced UI
-├── .env                  # Your API keys (create this)
-├── start.sh             # Linux/Mac launch script
-├── start.bat            # Windows launch script
-└── chatbot_users.db     # SQLite database (auto-created)
+│   └── multi_model_chat.html   # Enhanced web UI
+├── static/
+│   └── logo.png             # Application logo
+├── .env                     # Your API keys (created by setup)
+├── start.sh                 # macOS/Linux launch script
+├── start.bat                # Windows launch script
+├── stop.sh                  # macOS/Linux stop script
+├── stop.bat                 # Windows stop script
+├── restart.sh               # macOS/Linux restart script
+├── restart.bat              # Windows restart script
+├── venv/                    # Virtual environment (created by setup)
+└── chatbot_users.db         # SQLite database (auto-created)
 ```
 
 ## 🎯 Key Features
@@ -145,30 +211,91 @@ sirimath-connect/
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### Setup Issues
+
+#### macOS: "Permission denied" or "Command not found"
+```bash
+# Make scripts executable
+chmod +x setup_mac.sh start.sh stop.sh restart.sh
+
+# If Homebrew installation fails, install manually:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+#### Windows: "Python not found" or "Access denied"
+- Install Python 3.8+ from [python.org](https://python.org)
+- ✅ **Important**: Check "Add Python to PATH" during installation
+- Run Command Prompt as Administrator if needed
+- Restart your computer after Python installation
+
+#### Linux: "Package not found" or "Permission denied"
+```bash
+# Make scripts executable
+chmod +x setup_linux.sh start.sh stop.sh restart.sh
+
+# For Ubuntu/Debian - update package lists first:
+sudo apt update
+
+# For other distributions, ensure you have sudo access
+```
+
+### Runtime Issues
 
 #### "Crawl4AI not available"
 ```bash
-pip install crawl4ai
+# Reinstall in virtual environment
+source venv/bin/activate  # Linux/Mac
+# OR venv\Scripts\activate.bat  # Windows
+
+pip install --upgrade crawl4ai
 python -m playwright install
 ```
 
-#### "Permission denied" on start.sh
-```bash
-chmod +x start.sh
-```
-
 #### Gemini API errors
-- Check your API key in `.env`
+- Check your API key in `.env` file
 - Ensure you have API quota remaining
-- Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+- Visit [Google AI Studio](https://ai.google.dev/) to verify your key
+- Make sure there are no extra spaces in your API key
 
 #### Playwright installation issues
 ```bash
-# Try these commands
+# Full Playwright installation with dependencies
 python -m playwright install --with-deps
-# Or on Ubuntu/Debian:
-sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libgtk-3-0
+
+# Ubuntu/Debian specific fix:
+sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libgtk-3-0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2
+
+# macOS specific fix:
+brew install --cask firefox  # If default browser download fails
+```
+
+#### Virtual environment issues
+```bash
+# Remove and recreate virtual environment
+rm -rf venv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Performance & Connectivity
+
+#### App is slow or unresponsive
+1. **First run is always slower** - Playwright downloads browsers (~100MB)
+2. **Research takes 2-5 seconds** - be patient for fresh data
+3. **Check your internet connection** - research requires web access
+4. **Restart the application** occasionally to clear caches
+
+#### "Connection refused" or "Port in use"
+```bash
+# Kill any existing Python processes
+pkill -f "python.*app.py"  # Linux/Mac
+# OR
+taskkill /F /IM python.exe  # Windows
+
+# Try a different port
+export FLASK_RUN_PORT=5001  # Linux/Mac
+# OR edit app.py to change the port
 ```
 
 ### Performance Tips
@@ -181,21 +308,56 @@ sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libgtk-3-0
 ## 🔧 Advanced Configuration
 
 ### Environment Variables
-```bash
-# .env file options
+Edit the `.env` file for customization:
+```env
+# Required
 GEMINI_API_KEY=your_key_here
-FLASK_SECRET_KEY=your_secret_key
+FLASK_SECRET_KEY=auto_generated_secure_key
 
-# Optional: Disable auto-research if needed
-# (But why would you want to?)
+# Optional Development Settings
+FLASK_ENV=development
+FLASK_DEBUG=True
+
+# Research Configuration
+MAX_CRAWL_PAGES=5           # Max pages to crawl per query
+CRAWL_TIMEOUT=30            # Seconds before timing out
+ENABLE_AUTO_RESEARCH=True   # Toggle auto-research feature
 ```
 
-### Customizing Research
-Edit the `SmartWebCrawler` class in `app.py` to:
-- Add more company URLs
-- Modify crawl indicators
-- Adjust rate limits
-- Change content filtering
+### Application Settings
+You can modify these in `app.py`:
+- **Research triggers**: Keywords that activate web crawling
+- **Crawl sources**: URLs prioritized for different topics
+- **Rate limits**: Delays between requests to be respectful
+- **Content filtering**: What information to extract from pages
+
+### Platform-Specific Optimizations
+
+#### macOS
+- Uses Homebrew for dependency management
+- Optimized for both Intel and Apple Silicon
+- Includes proper PATH configuration
+
+#### Windows
+- Handles Windows-specific path separators
+- Uses batch files for easy launching
+- Includes PowerShell compatibility
+
+#### Linux
+- Supports multiple distributions automatically
+- Includes systemd service file for system integration
+- Uses distribution-specific package managers
+
+### Running as a System Service (Linux only)
+```bash
+# Install as systemd service (optional)
+sudo cp sirimath-connect.service /etc/systemd/system/
+sudo systemctl enable sirimath-connect
+sudo systemctl start sirimath-connect
+
+# Check status
+sudo systemctl status sirimath-connect
+```
 
 ## 🎉 Usage Examples
 
@@ -219,19 +381,77 @@ Amu Ultra: "The current AI landscape is dominated by predictable corporate posit
 
 ## 🔄 Updates & Maintenance
 
+### Keeping Your Installation Current
+
+#### Update Dependencies
+```bash
+# Activate virtual environment
+source venv/bin/activate  # Linux/Mac
+# OR venv\Scripts\activate.bat  # Windows
+
+# Update Python packages
+pip install --upgrade -r requirements.txt
+
+# Update Playwright browsers
+python -m playwright install
+```
+
+#### Restart Commands
+Use the provided scripts for easy management:
+```bash
+# macOS/Linux
+./start.sh      # Start the application
+./stop.sh       # Stop the application  
+./restart.sh    # Restart the application
+
+# Windows
+start.bat       # Start the application
+stop.bat        # Stop the application
+restart.bat     # Restart the application
+```
+
+### Automatic Maintenance
 The system automatically:
-- ✅ Caches web content to avoid spam
-- ✅ Respects rate limits
-- ✅ Updates knowledge base with fresh data
-- ✅ Maintains conversation context
+- ✅ **Caches web content** to avoid spam crawling
+- ✅ **Respects rate limits** to be web-friendly
+- ✅ **Updates knowledge base** with fresh data
+- ✅ **Maintains conversation context** across sessions
+- ✅ **Handles errors gracefully** with fallback responses
+- ✅ **Cleans up temporary files** periodically
 
-## 📞 Support
+### Data Storage
+- **Chat history**: Stored in `chatbot_users.db` (SQLite)
+- **Web cache**: Temporary files automatically cleaned
+- **User preferences**: Saved per session
+- **Logs**: Application logs for debugging
 
-If you encounter issues:
-1. Check the troubleshooting section above
-2. Ensure all dependencies are installed
-3. Verify your Gemini API key is valid
-4. Check that Playwright browsers are installed
+## 📞 Support & Contributing
+
+### Getting Help
+1. **Check the troubleshooting section** above for common issues
+2. **Verify your setup** by running the health check scripts
+3. **Ensure all dependencies** are properly installed
+4. **Check your API key** is valid and has quota
+
+### Health Check
+Run the built-in health check to verify your installation:
+```bash
+python health_check.py  # If available
+# OR check manually in the setup output
+```
+
+### Contributing
+This is an open-source project! Feel free to:
+- 🐛 Report bugs and issues
+- 💡 Suggest new features
+- 🔧 Submit improvements
+- 📖 Improve documentation
+
+### Version History
+- **v1.0**: Platform-specific automated setup scripts
+- **v0.9**: Auto-research feature with Crawl4AI integration
+- **v0.8**: Multi-model AI personalities
+- **v0.7**: Web-based chat interface
 
 ## 🎊 Enjoy Your Sirimath Connect Assistant!
 
