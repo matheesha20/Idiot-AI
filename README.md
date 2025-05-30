@@ -1,18 +1,15 @@
-# 🤖 Sirimath AI Assistant with TinyLlama + Auto-Research
+# 🤖 Sirimath Connect - Multi-Model AI Assistant with Auto-Research
 
-## 🌟 What's New - Completely LOCAL AI!
+## 🌟 What's New - Auto-Research Feature!
 
-Your AI assistant now runs **100% locally with TinyLlama** - no API keys needed! Plus **automatic web research**:
+Your AI assistant now **automatically researches topics online** without needing any commands! Just ask about companies, current events, or any topic that needs fresh information, and the AI will:
 
-- 🧠 **TinyLlama running locally** - completely private and self-hosted
-- 🌐 **Automatically crawls relevant websites**
-- 📊 **Gathers real-time information**
-- 🔒 **No cloud dependencies** - your data never leaves your machine
-- 💬 **Three unique AI personalities** to choose from
-- ⚡ **Fast inference** on CPU or GPU
-- 🛡️ **Robust fallback system** for stability
+- 🌐 **Automatically crawl relevant websites**
+- 📊 **Gather real-time information**
+- 🧠 **Integrate fresh data into responses**
+- 💬 **Respond in your chosen AI personality**
 
-No more API keys, no more cloud dependency - everything runs on YOUR machine! 🚀
+No more `/crawl` commands needed - it's all automatic! 🚀
 
 ## 🚀 Quick Setup (Automated)
 
@@ -23,7 +20,7 @@ No more API keys, no more cloud dependency - everything runs on YOUR machine! �
    ```bash
    python setup.py
    ```
-3. **Follow the prompts** (no API keys needed!)
+3. **Follow the prompts** (you'll need a Gemini API key)
 4. **Start the assistant**:
    ```bash
    ./start.sh    # Linux/Mac
@@ -48,8 +45,8 @@ python -m playwright install-deps
 #### Step 3: Create Environment File
 Create a `.env` file with:
 ```
+GEMINI_API_KEY=your_gemini_api_key_here
 FLASK_SECRET_KEY=your-secret-key-change-this
-# No API keys needed - TinyLlama runs locally!
 ```
 
 #### Step 4: Run the Application
@@ -57,50 +54,28 @@ FLASK_SECRET_KEY=your-secret-key-change-this
 python app.py
 ```
 
-### Option 3: Test Mode (If TinyLlama Fails)
-```bash
-# Run simple test version first
-python test_app.py
-```
+## 🔑 Getting Your Gemini API Key
 
-## 🧠 TinyLlama - Your Local AI Brain
-
-### What is TinyLlama?
-- **1.1B parameter language model** - small but powerful
-- **Runs on modest hardware** - even laptops work fine
-- **No internet required** after initial download
-- **Complete privacy** - your conversations stay local
-- **Fast inference** - especially with GPU acceleration
-- **Fallback mode** - graceful degradation if resources are limited
-
-### System Requirements
-- **Minimum**: 4GB RAM, any CPU
-- **Recommended**: 8GB RAM, dedicated GPU
-- **Storage**: ~2GB for model download
-- **Internet**: Only needed for initial model download + web research
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Click "Create API Key"
+3. Copy the key and paste it in your `.env` file
 
 ## 💬 AI Models Available
 
-### 🟢 F-1 (Standard)
-- **Personality**: Normal humanized AI with friendly conversational style
-- **Tone**: Warm, approachable, naturally helpful
+### 🟢 Chanuth (Standard)
+- **Personality**: Friendly humanized AI with natural conversation style
 - **Research**: Automatically looks up current info when needed
-- **Best for**: General conversations and friendly assistance
-- **Response Style**: Natural human speech, engaging and conversational
+- **Best for**: Natural, warm conversations and everyday questions
 
-### 🔷 F-1.5 (Enhanced)
-- **Personality**: Professional AI assistant focused on accuracy and efficiency
-- **Tone**: Business-like but approachable, clear and precise
-- **Research**: Methodical research with structured responses
-- **Best for**: Professional tasks, detailed information, work-related queries
-- **Response Style**: Well-structured, professional, thorough
+### 🔴 Amu Gawaya (Enhanced)  
+- **Personality**: Professional AI assistant with formal expertise
+- **Research**: Conducts thorough professional research with detailed analysis
+- **Best for**: Business communications and professional inquiries
 
-### 🟣 F-o1 (Ultra High)
-- **Personality**: Research-focused AI with analytical approach
-- **Tone**: Analytical, thorough, academic-like
-- **Research**: Comprehensive investigation with cross-referencing
-- **Best for**: Complex research, analysis, in-depth exploration
-- **Response Style**: Systematic, comprehensive, methodical
+### 🟣 Amu Gawaya Ultra Pro Max (Ultra)
+- **Personality**: Research-focused AI with analytical mindset
+- **Research**: Advanced academic research with evidence-based responses
+- **Best for**: Complex research questions and scholarly analysis
 
 ## 🌐 Auto-Research Examples
 
@@ -113,7 +88,7 @@ The AI will automatically research when you ask about:
 
 ### 📈 Financial Information
 - "Apple stock price"
-- "Tesla market performance" 
+- "Tesla market performance"
 - "Tech stocks today"
 
 ### 📰 Current Events
@@ -128,52 +103,27 @@ The AI will automatically research when you ask about:
 
 ## 🛠️ System Requirements
 
-### Minimum Requirements
 - **Python 3.8+**
-- **4GB+ RAM**
-- **2GB free storage** (for model)
-- **Internet connection** (for research only)
-
-### Recommended for Best Performance
-- **8GB+ RAM**
-- **NVIDIA GPU** with CUDA support
-- **SSD storage** for faster model loading
-- **Modern CPU** (4+ cores)
-
-### GPU Acceleration (Optional but Recommended)
-```bash
-# For NVIDIA GPUs with CUDA
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
-# The app will automatically detect and use GPU if available
-```
+- **4GB+ RAM** (for web crawling)
+- **Internet connection** (for research)
+- **Modern browser** (Chrome/Firefox/Safari)
 
 ## 📁 Project Structure
 
 ```
-sirimath-ai/
-├── app.py                     # Main Sirimath application
-├── test_app.py               # Simple test version
-├── requirements.txt           # Python dependencies
-├── setup.py                  # Automated setup script
-├── health_check.py           # System health checker
+sirimath-connect/
+├── app.py                 # Main application with auto-research
+├── requirements.txt       # Python dependencies
+├── setup.py              # Automated setup script
 ├── templates/
 │   └── multi_model_chat.html  # Enhanced UI
-├── models/                   # TinyLlama model cache (auto-created)
-├── .env                      # Your configuration (create this)
-├── start.sh                 # Linux/Mac launch script
-├── start.bat                # Windows launch script
-└── chatbot_users.db         # SQLite database (auto-created)
+├── .env                  # Your API keys (create this)
+├── start.sh             # Linux/Mac launch script
+├── start.bat            # Windows launch script
+└── chatbot_users.db     # SQLite database (auto-created)
 ```
 
 ## 🎯 Key Features
-
-### 🧠 Local TinyLlama AI
-- **Completely private** - no data sent to cloud
-- **Fast inference** on CPU or GPU
-- **No API keys** required
-- **Works offline** (except for web research)
-- **Fallback mode** for limited-resource systems
 
 ### 🌐 Intelligent Auto-Research
 - **Smart Detection**: Automatically detects when queries need current info
@@ -182,7 +132,7 @@ sirimath-ai/
 - **Cached Results**: Avoids duplicate crawls
 
 ### 🤖 Multiple AI Personalities
-- **Three distinct models** with different approaches
+- **Three distinct models** with different aggression levels
 - **Context-aware responses** using fresh web data
 - **Conversation memory** across chat sessions
 - **Emotion detection** for better responses
@@ -192,30 +142,10 @@ sirimath-ai/
 - **User preferences**
 - **Mobile-responsive design**
 - **Real-time research indicators**
-- **Local embeddings** for semantic search
-- **Robust error handling**
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
-
-#### Segmentation Fault on Startup
-```bash
-# Try the test version first:
-python test_app.py
-
-# If test works, the issue is TinyLlama loading
-# Check available RAM and try:
-export OMP_NUM_THREADS=1
-python app.py
-```
-
-#### "TinyLlama dependencies not available"
-```bash
-pip install torch transformers sentence-transformers
-# For GPU support:
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
 
 #### "Crawl4AI not available"
 ```bash
@@ -228,80 +158,63 @@ python -m playwright install
 chmod +x start.sh
 ```
 
-#### First run is slow
-- **Normal behavior** - TinyLlama downloads ~2GB model on first run
-- **Subsequent runs** are much faster
-- **Use GPU** for best performance
+#### Gemini API errors
+- Check your API key in `.env`
+- Ensure you have API quota remaining
+- Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 
-#### Out of memory errors
+#### Playwright installation issues
 ```bash
-# Reduce model parameters in .env file:
-TINYLLAMA_MAX_LENGTH=256
-TINYLLAMA_MAX_NEW_TOKENS=128
+# Try these commands
+python -m playwright install --with-deps
+# Or on Ubuntu/Debian:
+sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libgtk-3-0
 ```
 
 ### Performance Tips
 
-1. **First run downloads model** - be patient (~2GB download)
-2. **Use GPU if available** - much faster inference
-3. **Close other applications** to free RAM
-4. **SSD storage** improves model loading speed
-5. **Research takes 2-5 seconds** - be patient for fresh data
-6. **Fallback mode available** if full model won't load
+1. **First run may be slow** - Playwright needs to download browsers
+2. **Research takes 2-5 seconds** - be patient for fresh data
+3. **Rate limiting protects websites** - some queries may skip research
+4. **Clear cache occasionally** by restarting the app
 
 ## 🔧 Advanced Configuration
 
 ### Environment Variables
 ```bash
 # .env file options
+GEMINI_API_KEY=your_key_here
 FLASK_SECRET_KEY=your_secret_key
 
-# TinyLlama settings
-TINYLLAMA_DEVICE=auto                    # auto, cpu, cuda
-TINYLLAMA_MAX_LENGTH=256                 # Input context length (conservative)
-TINYLLAMA_MAX_NEW_TOKENS=128            # Response length (conservative)
-TINYLLAMA_TEMPERATURE=0.7               # Creativity (0.1-1.0)
-
-# Embedding model
-EMBEDDING_MODEL=all-MiniLM-L6-v2        # Local embedding model
-
-# Web crawling
-ENABLE_WEB_CRAWLING=true                # Enable/disable research
+# Optional: Disable auto-research if needed
+# (But why would you want to?)
 ```
 
-### Hardware Optimization
-```python
-# For systems with limited RAM (4GB)
-TINYLLAMA_MAX_LENGTH=256
-TINYLLAMA_MAX_NEW_TOKENS=128
-
-# For systems with good RAM (8GB+)
-TINYLLAMA_MAX_LENGTH=512
-TINYLLAMA_MAX_NEW_TOKENS=256
-
-# For powerful systems (16GB+)
-TINYLLAMA_MAX_LENGTH=1024
-TINYLLAMA_MAX_NEW_TOKENS=512
-```
+### Customizing Research
+Edit the `SmartWebCrawler` class in `app.py` to:
+- Add more company URLs
+- Modify crawl indicators
+- Adjust rate limits
+- Change content filtering
 
 ## 🎉 Usage Examples
 
-### Friendly Conversation (F-1)
+### Basic Conversation
 ```
 You: "Tell me about Apple company"
-F-1: "Hello! Apple Inc. is a major technology company known for designing and manufacturing consumer electronics like iPhones, iPads, and MacBooks. They're currently one of the world's most valuable companies and are headquartered in Cupertino, California. Would you like me to look up their latest news or stock information?"
+Chanuth: "Ugh, fine. Apple's doing their usual thing - they just announced some new iPhone nonsense and their stock is around $180. They're still making ridiculous amounts of money selling overpriced gadgets to people who think they need the latest shiny thing."
 ```
 
-### Professional Query (F-1.5)
+### Financial Query
 ```
-You: "Tesla stock performance"
-F-1.5: "I'll gather the current Tesla stock information for you. Tesla (TSLA) is currently trading around $240 per share. The stock has experienced volatility this quarter due to various market factors including EV competition and production updates. Would you like a more detailed analysis of their recent performance metrics?"
+You: "Tesla stock price"
+Amu Gawaya: "tesla's at like $240 or whatever, down from yesterday because musk probably tweeted something stupid again 🙄 why don't you just check your own portfolio app?"
 ```
 
-### Research Analysis (F-o1)
+### Technical Information
 ```
 You: "Latest AI developments"
-F-o1: "Conducting comprehensive analysis of current AI developments... Recent significant advances include improvements in large language models, multimodal AI systems, and AI safety research. Key developments include OpenAI's latest model iterations, Google's Gemini advances, and increased focus on AI alignment research. This represents a continued acceleration in the field with both technical and regulatory implications."
+Amu Ultra: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iterations and Google's continued Gemini enhancements, though I doubt your limited comprehension can appreciate the technical complexities involved."
 ```
 
 ## 🔄 Updates & Maintenance
@@ -311,50 +224,19 @@ The system automatically:
 - ✅ Respects rate limits
 - ✅ Updates knowledge base with fresh data
 - ✅ Maintains conversation context
-- ✅ Stores models locally for offline use
-- ✅ Gracefully handles system limitations
-- ✅ Provides fallback responses when needed
 
 ## 📞 Support
 
 If you encounter issues:
-1. **Try test mode first**: `python test_app.py`
-2. **Run health check**: `python health_check.py`
-3. Check the troubleshooting section above
-4. Ensure all dependencies are installed
-5. Verify sufficient RAM/storage available
-6. Check that Playwright browsers are installed
+1. Check the troubleshooting section above
+2. Ensure all dependencies are installed
+3. Verify your Gemini API key is valid
+4. Check that Playwright browsers are installed
 
-### Health Check Commands
-```bash
-# Check system compatibility
-python health_check.py
+## 🎊 Enjoy Your Sirimath Connect Assistant!
 
-# Test basic functionality
-python test_app.py
+Your AI now has access to the entire web and will automatically research topics to give you the most current information - all while maintaining their unique personalities! 
 
-# Check model loading
-python -c "import torch; print('PyTorch:', torch.__version__)"
-```
+Ask about companies, stocks, news, or anything that needs fresh data. The AI will handle the research automatically and respond in character.
 
-## 🎊 Enjoy Your LOCAL AI Assistant!
-
-Sirimath now runs **completely on your machine** with TinyLlama and will automatically research topics to give you the most current information - all with three distinct personalities to match your needs!
-
-Ask about companies, stocks, news, or anything that needs fresh data. The AI will handle the research automatically and respond according to their personality.
-
-**Key Benefits:**
-- 🔒 **Complete Privacy** - your data never leaves your machine
-- ⚡ **Fast Response** - no network latency for AI inference
-- 🌐 **Current Info** - automatic web research when needed
-- 💰 **No Costs** - no API fees or subscriptions
-- 🚀 **Always Available** - works offline after initial setup
-- 🛡️ **Reliable** - fallback modes ensure it always works
-- 🎭 **Personalized** - choose the AI personality that fits your needs
-
-**Three Personalities for Every Need:**
-- 🟢 **F-1**: Your friendly, conversational companion
-- 🔷 **F-1.5**: Your professional, efficient assistant
-- 🟣 **F-o1**: Your thorough, research-focused analyst
-
-**No API keys needed - just ask and watch the magic happen!** ✨
+**No commands needed - just ask and watch the magic happen!** ✨

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Health Check Script for Multi-Model AI Assistant with TinyLlama
+Health Check Script for Multi-Model AI Assistant
 Verifies all components are working correctly
 """
 
@@ -36,13 +36,6 @@ def check_files():
             print(f"❌ {file} - MISSING")
             all_good = False
     
-    # Check model cache directory
-    models_dir = Path('./models')
-    if models_dir.exists():
-        print(f"✅ ./models/ (cache directory)")
-    else:
-        print(f"ℹ️  ./models/ - Will be created on first run")
-    
     return all_good
 
 def check_environment():
@@ -51,21 +44,20 @@ def check_environment():
     
     load_dotenv()
     
+    api_key = os.getenv('GEMINI_API_KEY')
     secret_key = os.getenv('FLASK_SECRET_KEY')
+    
+    if api_key:
+        print(f"✅ GEMINI_API_KEY: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else '***'}")
+    else:
+        print("❌ GEMINI_API_KEY: Missing")
     
     if secret_key:
         print("✅ FLASK_SECRET_KEY: Set")
     else:
         print("❌ FLASK_SECRET_KEY: Missing")
     
-    # Check TinyLlama settings
-    device = os.getenv('TINYLLAMA_DEVICE', 'auto')
-    max_length = os.getenv('TINYLLAMA_MAX_LENGTH', '512')
-    
-    print(f"ℹ️  TINYLLAMA_DEVICE: {device}")
-    print(f"ℹ️  TINYLLAMA_MAX_LENGTH: {max_length}")
-    
-    return bool(secret_key)
+    return bool(api_key and secret_key)
 
 def check_python_packages():
     """Check if all required packages are installed"""
@@ -73,9 +65,7 @@ def check_python_packages():
     
     packages = [
         'flask',
-        'torch',
-        'transformers',
-        'sentence_transformers',
+        'google-generativeai',
         'numpy',
         'faiss-cpu',
         'requests',
@@ -86,14 +76,14 @@ def check_python_packages():
     all_installed = True
     for package in packages:
         try:
-            if package == 'python-dotenv':
-                import dotenv
+            if package == 'google-generativeai':
+                import google.generativeai
                 print(f"✅ {package}")
             elif package == 'faiss-cpu':
                 import faiss
                 print(f"✅ {package}")
-            elif package == 'sentence_transformers':
-                import sentence_transformers
+            elif package == 'python-dotenv':
+                import dotenv
                 print(f"✅ {package}")
             else:
                 __import__(package.replace('-', '_'))
@@ -104,144 +94,67 @@ def check_python_packages():
     
     return all_installed
 
-def check_pytorch_cuda():
-    """Check PyTorch and CUDA setup"""
-    print_header("🔥 PYTORCH & CUDA CHECK")
-    
-    try:
-        import torch
-        print(f"✅ PyTorch: Version {torch.__version__}")
-        
-        if torch.cuda.is_available():
-            gpu_count = torch.cuda.device_count()
-            gpu_name = torch.cuda.get_device_name(0)
-            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            print(f"🚀 CUDA: Available with {gpu_count} GPU(s)")
-            print(f"   GPU: {gpu_name} ({gpu_memory:.1f}GB)")
-        else:
-            print("💻 CUDA: Not available (will use CPU)")
-        
-        # Test basic tensor operations
-        test_tensor = torch.randn(3, 3)
-        if torch.cuda.is_available():
-            test_tensor_gpu = test_tensor.cuda()
-            print("✅ GPU tensor operations: Working")
-        
-        print("✅ PyTorch: Basic operations working")
-        return True
-        
-    except ImportError:
-        print("❌ PyTorch: Not installed")
-        return False
-    except Exception as e:
-        print(f"❌ PyTorch: Error - {e}")
-        return False
-
-def check_tinyllama():
-    """Check TinyLlama model availability"""
-    print_header("🧠 TINYLLAMA CHECK")
-    
-    try:
-        from transformers import AutoTokenizer, AutoModelForCausalLM
-        import torch
-        
-        model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        
-        print(f"📥 Checking TinyLlama model: {model_name}")
-        print(f"🎯 Target device: {device}")
-        
-        # Check if model is cached
-        cache_dir = Path('./models')
-        if cache_dir.exists() and any(cache_dir.iterdir()):
-            print("✅ Model cache directory exists with content")
-        else:
-            print("ℹ️  Model cache empty - will download on first run (~2GB)")
-        
-        # Try to load tokenizer (faster test)
-        print("🔤 Testing tokenizer...")
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            cache_dir='./models',
-            trust_remote_code=True
-        )
-        print("✅ Tokenizer: Loaded successfully")
-        
-        # Test basic tokenization
-        test_text = "Hello, how are you?"
-        tokens = tokenizer.encode(test_text)
-        decoded = tokenizer.decode(tokens)
-        print(f"✅ Tokenizer test: '{test_text}' -> {len(tokens)} tokens")
-        
-        print("ℹ️  Full model loading will happen on first app run")
-        return True
-        
-    except ImportError as e:
-        print(f"❌ TinyLlama dependencies missing: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ TinyLlama test failed: {e}")
-        return False
-
-def check_embeddings():
-    """Check sentence transformers for embeddings"""
-    print_header("🔤 EMBEDDINGS CHECK")
-    
-    try:
-        from sentence_transformers import SentenceTransformer
-        
-        model_name = "all-MiniLM-L6-v2"
-        print(f"📥 Loading embedding model: {model_name}")
-        
-        model = SentenceTransformer(model_name)
-        
-        # Test embedding generation
-        test_sentence = "This is a test sentence."
-        embedding = model.encode(test_sentence)
-        
-        print(f"✅ Embedding model: Loaded successfully")
-        print(f"✅ Embedding dimension: {len(embedding)}")
-        print(f"✅ Test embedding: Generated for test sentence")
-        
-        return True
-        
-    except ImportError as e:
-        print(f"❌ Sentence transformers missing: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Embedding test failed: {e}")
-        return False
-
 def check_crawl4ai():
     """Check Crawl4AI and Playwright setup"""
     print_header("🌐 WEB CRAWLING CHECK")
     
     try:
-        from crawl4ai import AsyncWebCrawler
+        from crawl4ai import WebCrawler
         print("✅ Crawl4AI: Imported successfully")
         
-        # Check if playwright browsers are installed
-        try:
-            import subprocess
-            result = subprocess.run(['python', '-m', 'playwright', '--version'], 
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                print(f"✅ Playwright: {result.stdout.strip()}")
-            else:
-                print("⚠️  Playwright: Version check failed")
-        except Exception:
-            print("⚠️  Playwright: Could not check version")
+        # Try to initialize crawler
+        crawler = WebCrawler()
+        print("✅ WebCrawler: Initialized")
         
-        print("✅ Web crawling: Ready for auto-research")
-        return True
+        # Test warmup
+        try:
+            crawler.warmup()
+            print("✅ Crawler Warmup: Success")
+            return True
+        except Exception as e:
+            print(f"⚠️  Crawler Warmup: Failed ({str(e)[:50]}...)")
+            print("   This might work anyway, but you may need to run:")
+            print("   python -m playwright install")
+            return True
             
     except ImportError as e:
         print(f"❌ Crawl4AI: Not available ({e})")
         print("   Install with: pip install crawl4ai")
-        print("   Then run: python -m playwright install")
         return False
     except Exception as e:
         print(f"❌ Crawl4AI: Error ({e})")
+        return False
+
+def check_gemini_api():
+    """Test Gemini API connectivity"""
+    print_header("🤖 GEMINI API CHECK")
+    
+    load_dotenv()
+    api_key = os.getenv('GEMINI_API_KEY')
+    
+    if not api_key:
+        print("❌ No API key found")
+        return False
+    
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        
+        # Test with a simple request
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content("Say 'API test successful'")
+        
+        if response and response.text:
+            print("✅ Gemini API: Connection successful")
+            print(f"   Response: {response.text.strip()}")
+            return True
+        else:
+            print("❌ Gemini API: No response received")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Gemini API: Error - {e}")
+        print("   Check your API key at: https://makersuite.google.com/app/apikey")
         return False
 
 def check_database():
@@ -302,22 +215,6 @@ def test_basic_functionality():
         should_crawl = crawler.should_crawl_for_query("Tell me about Apple company")
         print(f"✅ SmartWebCrawler: OK (would crawl: {should_crawl})")
         
-        # Test TinyLlama manager (without loading full model)
-        from app import TinyLlamaManager, TINYLLAMA_AVAILABLE
-        if TINYLLAMA_AVAILABLE:
-            print("✅ TinyLlamaManager: Dependencies available")
-        else:
-            print("⚠️  TinyLlamaManager: Dependencies missing")
-        
-        # Test embedding manager
-        from app import LocalEmbeddingManager
-        emb_manager = LocalEmbeddingManager()
-        if emb_manager.available:
-            test_emb = emb_manager.generate_embedding("test")
-            print(f"✅ LocalEmbeddingManager: OK (dim: {len(test_emb)})")
-        else:
-            print("⚠️  LocalEmbeddingManager: Not available")
-        
         return True
         
     except Exception as e:
@@ -327,16 +224,14 @@ def test_basic_functionality():
 def run_full_health_check():
     """Run complete health check"""
     print("🔍 MULTI-MODEL AI ASSISTANT HEALTH CHECK")
-    print("🧠 Verifying TinyLlama and all components...")
+    print("🤖 Verifying all components are ready...")
     
     checks = [
         ("Files", check_files),
         ("Environment", check_environment),
         ("Python Packages", check_python_packages),
-        ("PyTorch & CUDA", check_pytorch_cuda),
-        ("TinyLlama", check_tinyllama),
-        ("Embeddings", check_embeddings),
         ("Crawl4AI", check_crawl4ai),
+        ("Gemini API", check_gemini_api),
         ("Database", check_database),
         ("Functionality", test_basic_functionality)
     ]
@@ -363,29 +258,21 @@ def run_full_health_check():
     
     if passed == total:
         print("\n🎉 ALL SYSTEMS GO!")
-        print("Your Multi-Model AI Assistant with TinyLlama is ready!")
+        print("Your Multi-Model AI Assistant is ready to rock!")
         print("\n🚀 To start the assistant:")
         print("  python app.py")
         print("  Then open: http://localhost:5000")
-        print("\n🌐 Features ready:")
-        print("  🧠 TinyLlama running locally (no API keys needed!)")
-        print("  🌐 Auto-research enabled - ask about companies, news, anything!")
-        print("  🔒 Completely private - everything runs on your machine!")
-        print("\n⚡ First run will download TinyLlama model (~2GB)")
-        print("🚀 After that, everything runs instantly offline!")
+        print("\n🌐 Auto-research is enabled - ask about companies, news, or anything!")
     else:
         print(f"\n⚠️  {total - passed} issues need attention")
         print("Please fix the failed checks above before running the assistant")
         
-        if not results.get("PyTorch & CUDA"):
-            print("\n💡 Fix PyTorch:")
-            print("  pip install torch torchvision torchaudio")
-            print("  Or for GPU: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118")
+        if not results.get("Gemini API"):
+            print("\n💡 Get your Gemini API key:")
+            print("  1. Visit: https://makersuite.google.com/app/apikey")
+            print("  2. Create an API key")
+            print("  3. Add it to your .env file")
         
-        if not results.get("TinyLlama"):
-            print("\n💡 Fix TinyLlama:")
-            print("  pip install transformers sentence-transformers")
-            
         if not results.get("Crawl4AI"):
             print("\n💡 Fix Crawl4AI:")
             print("  pip install crawl4ai")
