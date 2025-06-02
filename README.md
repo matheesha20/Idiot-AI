@@ -1,6 +1,6 @@
 # 🤖 Sirimath Connect - Multi-Model AI Assistant with Auto-Research
 
-Sirimath Connect is an advanced AI assistant that automatically researches topics online, integrates fresh data into its responses, and allows you to chat with multiple AI personalities. Experience intelligent conversations backed by real-time information.
+Sirimath Connect is an advanced AI assistant that automatically researches topics online, integrates fresh data into its responses, and allows you to chat with multiple AI personalities. Experience intelligent conversations with cutting-edge AI technology! 🚀
 
 ## 🚀 Live Demo
 
@@ -125,6 +125,72 @@ FLASK_DEBUG=True
 
 ```bash
 python app.py
+```
+
+### Option 3: Production Deployment with Nginx (Linux)
+
+For deploying to a production server with custom domain:
+
+#### Step 1: Install Nginx (if not installed)
+
+```bash
+sudo apt update
+sudo apt install nginx
+```
+
+#### Step 2: Edit or Create a Site Configuration
+
+Create a config file under `/etc/nginx/sites-available/yourdomain.com`:
+
+```bash
+sudo nano /etc/nginx/sites-available/yourdomain.com
+```
+
+Paste this config (replace `yourdomain.com` with your domain):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+#### Step 3: Enable the Site
+
+Create a symbolic link in sites-enabled:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/yourdomain.com /etc/nginx/sites-enabled/
+```
+
+#### Step 4: Test Nginx Configuration
+
+```bash
+sudo nginx -t
+```
+
+#### Step 5: Reload Nginx
+
+```bash
+sudo systemctl reload nginx
+```
+
+#### ✅ Optional: Setup SSL with Let's Encrypt
+
+To secure your site with HTTPS:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
 ## 🔑 Getting Your Gemini API Key
@@ -465,7 +531,7 @@ sudo systemctl status sirimath-connect
 
 **You**: "Tell me about Apple company"
 
-**F-1**: "Ugh, fine. Apple's doing their usual thing - they just announced some new iPhone nonsense and their stock is around $180. They're still making ridiculous amounts of money selling overpriced gadgets to people who think they need the latest shiny thing."
+**F-1**: "Ugh, fine. Apple's doing their usual thing - they just announced some new iPhone nonsense and their stock is around $180. They're still making ridiculous amounts of money selling overpriced gadgets to people who think they need the latest shiny object..."
 
 ### Financial Query
 
@@ -477,7 +543,7 @@ sudo systemctl status sirimath-connect
 
 **You**: "Latest AI developments"
 
-**F-o1**: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iterations and Google's continued Gemini enhancements, though I doubt your limited comprehension can appreciate the technical complexities involved."
+**F-o1**: "The current AI landscape is dominated by predictable corporate positioning and incremental improvements to large language models. Recent developments include OpenAI's latest model iteration..."
 
 ## 🔄 Updates & Maintenance
 
