@@ -2,10 +2,6 @@
 
 Sirimath Connect is an advanced AI assistant that automatically researches topics online, integrates fresh data into its responses, and allows you to chat with multiple AI personalities. Experience intelligent conversations with cutting-edge AI technology! 🚀
 
-## 🚀 Live Demo
-
-Check out the live demo at: [demo.sirimath.com](https://demo.sirimath.com)
-
 ## 🌟 What's New - Auto-Research Feature!
 
 Your AI assistant now automatically researches topics online without needing any commands! Just ask about companies, current events, or any topic that needs fresh information, and the AI will:
